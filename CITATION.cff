@@ -5,6 +5,6 @@ type: software
 authors:
   - family-names: "Morsy"
     given-names: "Ahmed"
-version: 0.5.0
+version: 0.5.1
 date-released: 2026-07-14
 license: MIT

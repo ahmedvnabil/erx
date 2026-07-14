@@ -5,6 +5,9 @@
 Set `EGYPT_RESEARCH_PUBLIC_URL` to the full public origin, for example
 `https://erx-mcp.zad.tools`. It is used for canonical URLs, OpenGraph,
 robots, sitemap, and MCP discovery metadata. Do not include a trailing slash.
+Set `EGYPT_RESEARCH_TRUST_PROXY=true` only when the service is reachable solely
+through one trusted reverse proxy that appends the real client address to
+`X-Forwarded-For`.
 
 Terminate TLS at the reverse proxy, redirect HTTP to HTTPS, and keep the SQLite
 database and backups on volumes separate from the application image.

@@ -35,4 +35,14 @@ describe("SitemapIngestor", () => {
     expect(await new FeedIngestor(store, { fetcher }).ingestSource("empty-source")).toEqual(expect.objectContaining({ status: "skipped", errorCode: "no_feed" }));
     store.close();
   });
+
+  it("reports source-side access blocks separately from parser failures", async () => {
+    const store = new ResearchStore(join(mkdtempSync(join(tmpdir(), "egypt-feed-blocked-")), "research.db")); store.initialize();
+    store.upsertSource({ slug: "blocked-source", name: "مصدر يحجب الخادم", url: "https://example.org", feedUrl: "https://example.org/feed", sourceType: "news", ownershipType: "private", language: "ar" });
+    const fetcher = (async () => new Response("blocked", { status: 403 })) as typeof fetch;
+    const report = await new FeedIngestor(store, { fetcher }).ingestSource("blocked-source");
+    expect(report).toEqual(expect.objectContaining({ status: "failed", errorCode: "source_access_blocked" }));
+    expect(store.listCrawlRuns("blocked-source", 1)[0]).toEqual(expect.objectContaining({ error_code: "source_access_blocked" }));
+    store.close();
+  });
 });

@@ -9,7 +9,7 @@ import { ResearchStore } from "../src/store.js";
 const open: Array<ReturnType<typeof createWebServer>> = [];
 afterEach(async () => { await Promise.all(open.splice(0).map((server) => new Promise<void>((resolve) => server.close(() => resolve())))); });
 
-async function fixture(rateLimitPerMinute = 120, publicUrl?: string) {
+async function fixture(rateLimitPerMinute = 120, publicUrl?: string, trustProxy = false) {
   const store = new ResearchStore(join(mkdtempSync(join(tmpdir(), "egypt-web-")), "research.db"));
   store.initialize();
   store.upsertSource({ slug: "official-test", name: "المصدر الرسمي التجريبي", url: "https://example.org", sourceType: "official", ownershipType: "government", language: "ar" });
@@ -17,7 +17,7 @@ async function fixture(rateLimitPerMinute = 120, publicUrl?: string) {
   const previousPublicUrl = process.env["EGYPT_RESEARCH_PUBLIC_URL"];
   if (publicUrl) process.env["EGYPT_RESEARCH_PUBLIC_URL"] = publicUrl;
   else delete process.env["EGYPT_RESEARCH_PUBLIC_URL"];
-  const server = createWebServer(store, { includeMcp: false, rateLimitPerMinute });
+  const server = createWebServer(store, { includeMcp: false, rateLimitPerMinute, trustProxy });
   if (previousPublicUrl === undefined) delete process.env["EGYPT_RESEARCH_PUBLIC_URL"];
   else process.env["EGYPT_RESEARCH_PUBLIC_URL"] = previousPublicUrl;
   open.push(server);
@@ -43,6 +43,12 @@ describe("web and REST", () => {
     const landing = await home.text();
     expect(landing).toContain("كل معلومة لها مصدر");
     expect(landing).toContain("14 أداة MCP");
+    expect(landing).toContain('class="hero-visual"');
+    expect(landing).toContain('alt="أرشيف بحثي يربط الوثائق بمصادرها"');
+    expect(landing).toContain("npx -y egypt-research-mcp serve --transport stdio");
+    expect(landing).toContain(`${base}/mcp`);
+    expect(landing).not.toContain("WHO IT IS FOR / 01");
+    expect(landing).not.toContain("LIVE ARCHIVE / 02");
     expect(landing).toContain('property="og:title"');
     expect(landing).toContain('application/ld+json');
     expect(await explorer.text()).toContain("ابدأ البحث");
@@ -54,7 +60,7 @@ describe("web and REST", () => {
 
   it("serves launch, discovery, brand, and bilingual documentation surfaces", async () => {
     const { base } = await fixture();
-    const paths = ["/en", "/docs", "/robots.txt", "/sitemap.xml", "/llms.txt", "/manifest.webmanifest", "/static/brand.svg", "/static/app.js", "/static/social-card.png"];
+    const paths = ["/en", "/docs", "/robots.txt", "/sitemap.xml", "/llms.txt", "/manifest.webmanifest", "/static/brand.svg", "/static/app.js", "/static/social-card.png", "/static/archive-atlas.webp"];
     const responses = await Promise.all(paths.map((path) => fetch(base + path)));
     expect(responses.every((response) => response.ok)).toBe(true);
     expect(await responses[0]!.text()).toContain("Every claim needs a source");
@@ -66,6 +72,7 @@ describe("web and REST", () => {
     expect(responses[6]!.headers.get("content-type")).toContain("image/svg+xml");
     expect(await responses[7]!.text()).toContain("clipboard.writeText");
     expect(responses[8]!.headers.get("content-type")).toContain("image/png");
+    expect(responses[9]!.headers.get("content-type")).toContain("image/webp");
   });
 
   it("adds security headers and bounded API rate limiting", async () => {
@@ -78,6 +85,24 @@ describe("web and REST", () => {
     expect(first.headers.get("x-request-id")).toBeTruthy();
     expect(blocked.status).toBe(429);
     expect(blocked.headers.get("retry-after")).toBeTruthy();
+  });
+
+  it("uses validated forwarded client addresses only when the proxy is trusted", async () => {
+    const trusted = await fixture(1, undefined, true);
+    expect((await fetch(`${trusted.base}/api/v1/sources`, { headers: { "x-forwarded-for": "198.51.100.1, 203.0.113.10" } })).status).toBe(200);
+    expect((await fetch(`${trusted.base}/api/v1/sources`, { headers: { "x-forwarded-for": "198.51.100.2, 203.0.113.10" } })).status).toBe(429);
+    expect((await fetch(`${trusted.base}/api/v1/sources`, { headers: { "x-forwarded-for": "198.51.100.1, 203.0.113.11" } })).status).toBe(200);
+
+    const direct = await fixture(1);
+    expect((await fetch(`${direct.base}/api/v1/sources`, { headers: { "x-forwarded-for": "203.0.113.20" } })).status).toBe(200);
+    expect((await fetch(`${direct.base}/api/v1/sources`, { headers: { "x-forwarded-for": "203.0.113.21" } })).status).toBe(429);
+  });
+
+  it("supports HEAD checks for the product landing page", async () => {
+    const { base } = await fixture();
+    const response = await fetch(base, { method: "HEAD" });
+    expect(response.status).toBe(200);
+    expect(await response.text()).toBe("");
   });
 
   it("enables HSTS only for a configured HTTPS production origin", async () => {

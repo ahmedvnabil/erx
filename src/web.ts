@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
+import { isIP } from "node:net";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 
@@ -12,20 +13,22 @@ import type { ResearchStore } from "./store.js";
 import type { SourceType } from "./types.js";
 import { APP_CSS, UTILITY_CSS, documentView, homeView, knowledgeView, methodologyView, resultsView, sourcesView } from "./views.js";
 
-export interface WebOptions { includeMcp?: boolean; rateLimitPerMinute?: number }
+export interface WebOptions { includeMcp?: boolean; rateLimitPerMinute?: number; trustProxy?: boolean }
 
 const apiPaths = ["/api/", "/search", "/export", "/mcp"];
 const SOCIAL_CARD_PNG = readFileSync(new URL("../public/social-card.png", import.meta.url));
+const ARCHIVE_ATLAS_WEBP = readFileSync(new URL("../public/archive-atlas.webp", import.meta.url));
 
 export function createWebServer(store: ResearchStore, options: WebOptions = {}) {
   const limits = new Map<string, { window: number; count: number }>();
   const maximum = options.rateLimitPerMinute ?? Number(process.env["EGYPT_RESEARCH_RATE_LIMIT"] ?? 120);
+  const trustProxy = options.trustProxy ?? process.env["EGYPT_RESEARCH_TRUST_PROXY"] === "true";
   const publicBaseUrl = normalizePublicBaseUrl(process.env["EGYPT_RESEARCH_PUBLIC_URL"]);
   return createServer(async (request, response) => {
     const requestId = randomUUID();
     securityHeaders(response, requestId, publicBaseUrl?.startsWith("https://") ?? false);
     const url = new URL(request.url ?? "/", `http://${request.headers.host ?? "127.0.0.1"}`);
-    if (apiPaths.some((prefix) => url.pathname.startsWith(prefix)) && limited(request, limits, maximum)) {
+    if (apiPaths.some((prefix) => url.pathname.startsWith(prefix)) && limited(request, limits, maximum, trustProxy)) {
       response.setHeader("retry-after", "60");
       json(response, 429, { error: { code: "rate_limited", request_id: requestId } });
       return;
@@ -46,6 +49,7 @@ async function route(store: ResearchStore, request: IncomingMessage, response: S
   if (path === "/static/app.css") return staticText(response, APP_CSS + UTILITY_CSS + PRODUCT_CSS, "text/css; charset=utf-8");
   if (path === "/static/app.js") return staticText(response, APP_JS, "text/javascript; charset=utf-8");
   if (path === "/static/brand.svg") return staticText(response, brandSvg(), "image/svg+xml; charset=utf-8");
+  if (path === "/static/archive-atlas.webp") return binary(response, ARCHIVE_ATLAS_WEBP, "image/webp");
   if (path === "/static/social-card.svg") return staticText(response, socialCardSvg(), "image/svg+xml; charset=utf-8");
   if (path === "/static/social-card.png") return binary(response, SOCIAL_CARD_PNG, "image/png");
   if (path === "/manifest.webmanifest") return json(response, 200, manifest(baseUrl), "application/manifest+json; charset=utf-8");
@@ -64,8 +68,8 @@ async function route(store: ResearchStore, request: IncomingMessage, response: S
     const body = [`# TYPE egypt_research_documents gauge`, `egypt_research_documents ${sources.reduce((sum, source) => sum + source.documentCount, 0)}`, `# TYPE egypt_research_sources gauge`, `egypt_research_sources ${sources.length}`, `# TYPE egypt_research_failed_sources gauge`, `egypt_research_failed_sources ${sources.filter((source) => source.healthStatus === "failed").length}`, `# TYPE egypt_research_failed_crawl_runs gauge`, `egypt_research_failed_crawl_runs ${runs.filter((run) => run["status"] === "failed").length}`, ""].join("\n");
     return text(response, 200, body, "text/plain; version=0.0.4; charset=utf-8");
   }
-  if (path === "/" && request.method === "GET") return html(response, 200, landingView(store.listSources(), store.listStories(8), baseUrl, "ar"));
-  if (path === "/en" && request.method === "GET") return html(response, 200, landingView(store.listSources(), store.listStories(8), baseUrl, "en"));
+  if (path === "/" && (request.method === "GET" || request.method === "HEAD")) return html(response, 200, landingView(store.listSources(), store.listStories(8), baseUrl, "ar"));
+  if (path === "/en" && (request.method === "GET" || request.method === "HEAD")) return html(response, 200, landingView(store.listSources(), store.listStories(8), baseUrl, "en"));
   if (path === "/explore" && request.method === "GET") return html(response, 200, homeView(store.listSources(), store.listStories(8)));
   if (path === "/docs" && request.method === "GET") return html(response, 200, docsView(store.listSources(), baseUrl));
   if (path === "/search" && request.method === "GET") {
@@ -93,9 +97,15 @@ async function route(store: ResearchStore, request: IncomingMessage, response: S
   if (path.startsWith("/api/v1/")) return api(store, response, url);
   if (path === "/mcp") {
     if (!includeMcp) return json(response, 404, { error: { code: "not_found" } });
+    if (!validOrigin(request, baseUrl)) return jsonRpc(response, 403, -32000, "Origin not allowed");
     if (request.method !== "POST") return jsonRpc(response, 405, -32000, "Method not allowed");
-    const body = await readJson(request, 1_000_000);
-    const server = createMcpServer(store);
+    let body: unknown;
+    try { body = await readJson(request, 1_000_000); }
+    catch (error) {
+      if (error instanceof PayloadTooLargeError) return jsonRpc(response, 413, -32000, "Request body exceeds size limit");
+      return jsonRpc(response, 400, -32700, "Parse error");
+    }
+    const server = createMcpServer(store, { allowWrites: false });
     const transport = new StreamableHTTPServerTransport({ enableJsonResponse: true });
     await server.connect(transport as unknown as Transport);
     response.once("close", () => { void transport.close(); void server.close(); });
@@ -140,10 +150,27 @@ function securityHeaders(response: ServerResponse, requestId: string, secureOrig
   response.setHeader("content-security-policy", "default-src 'self'; script-src 'self' https://unpkg.com https://cdnjs.cloudflare.com; style-src 'self' 'sha256-bsV5JivYxvGywDAZ22EZJKBFip65Ng9xoJVLbBg7bdo='; connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'");
 }
 
-function limited(request: IncomingMessage, limits: Map<string, { window: number; count: number }>, maximum: number): boolean {
-  const window = Math.floor(Date.now() / 60_000); const key = `${request.socket.remoteAddress ?? "unknown"}:${window}`; const entry = limits.get(key);
+function limited(request: IncomingMessage, limits: Map<string, { window: number; count: number }>, maximum: number, trustProxy: boolean): boolean {
+  const window = Math.floor(Date.now() / 60_000); const key = `${clientAddress(request, trustProxy)}:${window}`; const entry = limits.get(key);
   if (!entry) { limits.set(key, { window, count: 1 }); if (limits.size > 10_000) limits.clear(); return false; }
-  entry.count += 1; return entry.count > maximum;
+  const next = { ...entry, count: entry.count + 1 }; limits.set(key, next); return next.count > maximum;
+}
+
+function clientAddress(request: IncomingMessage, trustProxy: boolean): string {
+  if (trustProxy) {
+    const forwarded = request.headers["x-forwarded-for"];
+    const addresses = (Array.isArray(forwarded) ? forwarded.join(",") : forwarded)?.split(",").map((address) => address.trim()).filter(Boolean) ?? [];
+    const nearest = addresses.at(-1);
+    if (nearest && isIP(nearest)) return nearest;
+  }
+  return request.socket.remoteAddress ?? "unknown";
+}
+
+function validOrigin(request: IncomingMessage, expectedOrigin: string): boolean {
+  const origin = request.headers.origin;
+  if (!origin) return true;
+  try { return new URL(origin).origin === expectedOrigin; }
+  catch { return false; }
 }
 
 function wire(value: unknown): unknown {
@@ -154,9 +181,11 @@ function wire(value: unknown): unknown {
 
 async function readJson(request: IncomingMessage, maximum: number): Promise<unknown> {
   const chunks: Buffer[] = []; let size = 0;
-  for await (const chunk of request) { const buffer = Buffer.from(chunk as Uint8Array); size += buffer.length; if (size > maximum) throw new Error("Request body exceeds size limit"); chunks.push(buffer); }
+  for await (const chunk of request) { const buffer = Buffer.from(chunk as Uint8Array); size += buffer.length; if (size > maximum) throw new PayloadTooLargeError(); chunks.push(buffer); }
   return JSON.parse(Buffer.concat(chunks).toString("utf8"));
 }
+
+class PayloadTooLargeError extends Error {}
 
 function html(response: ServerResponse, status: number, body: string): void { text(response, status, body, "text/html; charset=utf-8"); }
 function text(response: ServerResponse, status: number, body: string, contentType = "text/plain; charset=utf-8"): void { response.statusCode = status; response.setHeader("content-type", contentType); response.end(body); }

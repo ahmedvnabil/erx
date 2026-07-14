@@ -5,6 +5,7 @@ import { canonicalizeUrl, extractArticle, fetchArticle, hostAllowed, parseFeed, 
 import { extractPdf, type PdfExtraction } from "./pdf.js";
 import type { ResearchStore } from "./store.js";
 import { classifyDocument } from "./text.js";
+import { VERSION } from "./version.js";
 
 export interface IngestionReport {
   sourceSlug: string;
@@ -17,15 +18,22 @@ export interface IngestionReport {
   errorMessage: string | null;
 }
 
-const USER_AGENT = "ERX-EgyptResearch/0.5 (+research archive; contact=repository)";
+const USER_AGENT = `ERX-EgyptResearch/${VERSION} (+research archive; contact=https://github.com/ahmedvnabil/erx)`;
 const emptyReport = (sourceSlug: string): IngestionReport => ({ sourceSlug, status: "empty", itemsFound: 0, itemsSaved: 0, itemsEnriched: 0, enrichmentFailures: 0, errorCode: null, errorMessage: null });
 const sleep = (seconds: number) => new Promise((resolve) => setTimeout(resolve, seconds * 1_000));
+
+class SourceRequestError extends Error {
+  constructor(readonly code: string, message: string) { super(message); }
+}
 
 async function fetchResponse(url: string, allowedHost: string, maxBytes: number, fetcher: typeof fetch): Promise<Response> {
   const parsed = new URL(url);
   if (!hostAllowed(parsed.hostname, allowedHost)) throw new Error("URL is outside the configured source host");
   const response = await fetcher(url, { headers: { "user-agent": USER_AGENT, accept: "application/rss+xml,application/xml,text/xml,text/html,application/pdf" }, redirect: "error", signal: AbortSignal.timeout(30_000) });
-  if (!response.ok) throw new Error(`HTTP ${response.status} for ${url}`);
+  if (!response.ok) {
+    const code = response.status === 401 || response.status === 403 ? "source_access_blocked" : response.status === 429 ? "source_rate_limited" : "source_http_error";
+    throw new SourceRequestError(code, `HTTP ${response.status} for ${url}`);
+  }
   const length = Number(response.headers.get("content-length") ?? 0);
   if (length > maxBytes) throw new Error("Response exceeds size limit");
   return response;
@@ -63,7 +71,7 @@ export class FeedIngestor {
       return this.finish(runId, report);
     } catch (error) {
       this.store.updateSourceHealth(sourceSlug, "failed");
-      return this.finish(runId, { ...emptyReport(sourceSlug), status: "failed", errorCode: "fetch_or_parse_failed", errorMessage: error instanceof Error ? error.message : String(error) });
+      return this.finish(runId, { ...emptyReport(sourceSlug), status: "failed", errorCode: error instanceof SourceRequestError ? error.code : "fetch_or_parse_failed", errorMessage: error instanceof Error ? error.message : String(error) });
     }
   }
 
@@ -99,7 +107,7 @@ export class SitemapIngestor {
       return this.finish(runId, report);
     } catch (error) {
       this.store.updateSourceHealth(sourceSlug, "failed");
-      return this.finish(runId, { ...emptyReport(sourceSlug), status: "failed", errorCode: "sitemap_fetch_or_parse_failed", errorMessage: error instanceof Error ? error.message : String(error) });
+      return this.finish(runId, { ...emptyReport(sourceSlug), status: "failed", errorCode: error instanceof SourceRequestError ? error.code : "sitemap_fetch_or_parse_failed", errorMessage: error instanceof Error ? error.message : String(error) });
     }
   }
 

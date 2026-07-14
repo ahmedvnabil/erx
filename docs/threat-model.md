@@ -14,7 +14,8 @@
 | رابط من RSS/Sitemap | SSRF أو redirect إلى شبكة خاصة | نفس المضيف، DNS عام، منع redirects غير المسموحة |
 | HTML/PDF خارجي | ملف ضخم أو parser bomb أو prompt injection | حد bytes/pages/time، subprocess بلا shell، النص بيانات فقط |
 | استعلام البحث | SQL/FTS injection أو استهلاك مفرط | tokenization، parameterization، حدود طول ونتائج ومعدل |
-| REST/MCP العام | DoS أو scraping عدائي | rate limit، timeouts، response caps، metrics |
+| REST/MCP العام | DoS أو scraping عدائي | rate limit لكل IP موثوق من البروكسي، timeouts، response caps، metrics |
+| Streamable HTTP | DNS rebinding أو كتابة مجهولة في الحالة المشتركة | فحص Origin، وتعطيل أدوات الكتابة في النقل العام |
 | مزود embedding | تسريب محتوى أو مخرجات تالفة | opt-in، إرسال مقتطف محدود، تحقق الأبعاد والقيم |
 
 ## قرارات

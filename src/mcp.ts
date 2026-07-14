@@ -6,6 +6,7 @@ import { HybridRetriever } from "./retrieval.js";
 import { TOPICS } from "./text.js";
 import type { ResearchStore } from "./store.js";
 import { SOURCE_TYPES } from "./types.js";
+import { VERSION } from "./version.js";
 
 export const TOOL_NAMES = [
   "search_egypt", "get_document", "build_timeline", "compare_sources", "get_source_profile",
@@ -43,10 +44,12 @@ function toolResult(payload: Record<string, unknown>) {
 
 const readOnly = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false } as const;
 
-export function createMcpServer(store: ResearchStore): McpServer {
+export interface McpOptions { allowWrites?: boolean }
+
+export function createMcpServer(store: ResearchStore, options: McpOptions = {}): McpServer {
   const server = new McpServer({
     name: "ERX — Egypt Research Commons",
-    version: "0.5.0",
+    version: VERSION,
     description: "مصادر وأدلة وخطوط زمنية موثقة للباحثين في الشأن المصري"
   }, {
     instructions: "ابحث في مصادر الشأن المصري وأعد النتائج مع الاستشهادات. لا تصف الادعاءات بأنها حقائق مؤكدة دون مقارنة مصادر مستقلة ووثائق أولية."
@@ -125,7 +128,10 @@ export function createMcpServer(store: ResearchStore): McpServer {
     return toolResult(claim ? { ok: true, claim } : { ok: false, error: { code: "claim_not_found" } });
   });
 
-  server.registerTool("save_research_query", { description: "حفظ استعلام بحثي محلي لإعادة تشغيله ومتابعته لاحقًا.", inputSchema: { name: z.string().min(2).max(200), query: z.string().min(2).max(1000) }, annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false } }, ({ name, query }) => toolResult({ ok: true, savedSearch: store.saveSearch(name, query) }));
+  server.registerTool("save_research_query", { description: "حفظ استعلام بحثي محلي لإعادة تشغيله ومتابعته لاحقًا. الكتابة معطلة في نقطة MCP العامة.", inputSchema: { name: z.string().min(2).max(200), query: z.string().min(2).max(1000) }, annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false } }, ({ name, query }) => {
+    if (options.allowWrites === false) return { ...toolResult({ ok: false, error: { code: "remote_writes_disabled" } }), isError: true };
+    return toolResult({ ok: true, savedSearch: store.saveSearch(name, query) });
+  });
 
   const jsonResource = (uri: string, value: () => unknown) => server.registerResource(uri.split("//")[1] ?? uri, uri, { mimeType: "application/json" }, async () => ({ contents: [{ uri, mimeType: "application/json", text: JSON.stringify(toSnake(value()), null, 2) }] }));
   jsonResource("egypt://sources", () => store.listSources());
