@@ -8,13 +8,23 @@ const lexicon = [
   ["المبادرة المصرية للحقوق الشخصية", "organization", ["المبادرة المصرية"]],
   ["النيابة العامة", "organization", []],
   ["مجلس النواب", "organization", ["البرلمان المصري"]],
+  ["مجلس الوزراء", "organization", ["رئاسة مجلس الوزراء"]],
   ["وزارة الداخلية", "organization", []],
+  ["وزارة التموين", "organization", []],
+  ["وزارة التضامن الاجتماعي", "organization", []],
+  ["وزارة الخارجية", "organization", []],
+  ["وزارة التعليم العالي", "organization", []],
   ["محكمة النقض", "organization", []],
+  ["المحكمة الدستورية العليا", "organization", []],
+  ["المجلس القومي لحقوق الإنسان", "organization", []],
+  ["مفوضية الأمم المتحدة لشؤون اللاجئين", "organization", ["المفوضية السامية للأمم المتحدة لشؤون اللاجئين"]],
+  ["جامعة الدول العربية", "organization", []],
+  ["جهاز مستقبل مصر", "organization", []],
   ["الجهاز المركزي للتعبئة العامة والإحصاء", "organization", ["التعبئة والإحصاء"]],
   ["القاهرة", "location", []], ["الإسكندرية", "location", []], ["سيناء", "location", []],
   ["رفح", "location", []], ["العريش", "location", []]
 ] as const;
-const reportingVerbs = ["اعلن", "قال", "اكد", "ذكر", "افاد", "صرح", "اوضحت", "اوضح", "كشف", "اشار", "نفى", "نفت"];
+const reportingVerbs = ["اعلن", "اعلنت", "تعلن", "قال", "تقول", "اكد", "يوكد", "تؤكد", "ذكر", "افاد", "صرح", "اوضحت", "اوضح", "كشف", "اشار", "نفى", "نفت", "تنفي", "يطالب", "طالبت", "حذر", "تحذر"];
 const entityPrefixes: Array<[string, string]> = [
   ["وزاره", "organization"], ["مجلس", "organization"], ["محكمه", "organization"], ["جهاز", "organization"],
   ["هيئه", "organization"], ["مؤسسه", "organization"], ["منظمه", "organization"], ["جامعه", "organization"],
@@ -53,8 +63,11 @@ export class KnowledgeIndexer {
       this.store.linkEntity(documentId, canonicalName, entityType, mentions, 0.7);
       entities.push(canonicalName);
     }
-    const claims = (document.content ?? "").split(/[.!؟\n]+/).map((sentence) => sentence.replace(/\s+/g, " ").trim()).filter((sentence) => sentence.length >= 25 && reportingVerbs.some((verb) => normalizeArabic(sentence).includes(verb)));
-    for (const claim of claims) this.store.upsertClaim(documentId, claim);
+    const claims = [...new Set((document.content ?? "").split(/[.!؟؛\n]+/).map((sentence) => sentence.replace(/\s+/g, " ").trim()).filter((sentence) => sentence.length >= 25 && reportingVerbs.some((verb) => normalizeArabic(sentence).includes(verb))))];
+    for (const claim of claims) {
+      const classification = classifyClaim(claim);
+      this.store.upsertClaim(documentId, claim, classification.claimType, classification.stance, classification.confidence);
+    }
     const eventAt = extractEventDate(text);
     if (eventAt) this.store.updateDocumentEventAt(documentId, eventAt);
     const locations = lexicon
@@ -78,7 +91,7 @@ export class KnowledgeIndexer {
 function discoverEntities(value: string): Array<[string, string]> {
   const normalized = normalizeArabic(value);
   const found = new Map<string, string>();
-  const stop = new Set(["تعلن", "اعلن", "قال", "تقول", "بشأن", "بشان", "عن", "في", "من", "الى", "الي", "قرار", "قرارا", "بيان", "بيانا", "قررت", "يتناول", "تناول", "اخلاء", "سبيل", "بعدم", "الدعوى", "الدعوي", "والزمت", "لصالح", "على", "ان", "اليوم", "المقرر", "تنظر", "بحث", "يبحث", "شارك", "مناقشه", "مناقشة", "بشأن"]);
+  const stop = new Set(["تعلن", "اعلن", "اعلنت", "قال", "تقول", "بشأن", "بشان", "عن", "في", "من", "الى", "الي", "قرار", "قرارا", "بيان", "بيانا", "قررت", "يتناول", "تناول", "اخلاء", "سبيل", "بعدم", "الدعوى", "الدعوي", "والزمت", "لصالح", "على", "ان", "اليوم", "المقرر", "تنظر", "بحث", "يبحث", "شارك", "مناقشه", "مناقشة", "بشأن", "اجتماعا", "اجتماع", "رييس", "رئيس", "مركز", "المعلومات"]);
   for (const [prefix, entityType] of entityPrefixes) {
     const pattern = new RegExp(`${prefix}(?:\\s+[ء-ي]{2,}){1,4}`, "gu");
     for (const match of normalized.matchAll(pattern)) {
@@ -89,6 +102,14 @@ function discoverEntities(value: string): Array<[string, string]> {
     }
   }
   return [...found.entries()];
+}
+
+function classifyClaim(value: string): { claimType: string; stance: string; confidence: number } {
+  const normalized = normalizeArabic(value);
+  if (/(نفى|نفت|تنفي|ينفي)/u.test(normalized)) return { claimType: "denial", stance: "contradicts", confidence: 0.82 };
+  if (/(طالب|طالبت|يطالب)/u.test(normalized)) return { claimType: "demand", stance: "advocates", confidence: 0.8 };
+  if (/(حذر|تحذر|يحذر)/u.test(normalized)) return { claimType: "warning", stance: "warns", confidence: 0.8 };
+  return { claimType: "reported_statement", stance: "reports", confidence: 0.75 };
 }
 
 function extractEventDate(value: string): string | null {

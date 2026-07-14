@@ -48,8 +48,21 @@ describe("knowledge and retrieval", () => {
       title: "وزارة التموين تعلن قرارا جديدا", content: "في 12 يوليو 2026 أعلنت وزارة التموين قرارا جديدا بشأن الأسواق.", publishedAt: "2026-07-14T00:00:00.000Z"
     });
     new KnowledgeIndexer(store).indexDocument(inserted.documentId);
-    expect(store.listEntities({ documentId: inserted.documentId }).map((entity) => entity.canonicalName)).toContain("وزاره التموين");
+    expect(store.listEntities({ documentId: inserted.documentId }).map((entity) => entity.canonicalName)).toContain("وزارة التموين");
     expect(store.listEvents({ documentId: inserted.documentId })[0]?.occurredAt).toBe("2026-07-12T00:00:00.000Z");
+    store.close();
+  });
+
+  it("classifies deduplicated claims by stance", () => {
+    const { store } = fixture();
+    const inserted = store.upsertDocument({
+      externalId: "claims:1", sourceSlug: "rights-source", canonicalUrl: "https://example.org/claims/1",
+      title: "منظمة حقوقية تطالب بالتحقيق", content: "طالبت المنظمة الحقوقية بفتح تحقيق مستقل في الواقعة. طالبت المنظمة الحقوقية بفتح تحقيق مستقل في الواقعة. ونفت الوزارة وقوع الانتهاكات المذكورة.", publishedAt: "2026-07-14T00:00:00.000Z"
+    });
+    new KnowledgeIndexer(store).indexDocument(inserted.documentId);
+    const claims = store.listClaims({ documentId: inserted.documentId });
+    expect(claims).toHaveLength(2);
+    expect(claims.map((claim) => claim.claimType)).toEqual(expect.arrayContaining(["demand", "denial"]));
     store.close();
   });
 
