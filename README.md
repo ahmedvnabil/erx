@@ -1,7 +1,12 @@
-# Egypt Research MCP
+# ERX — Egypt Research Commons
 
-بنية معرفة مفتوحة وموثقة المصدر للشأن المصري. تجمع واجهة بحث عربية للباحثين
-مع Model Context Protocol للوكلاء، فوق الأرشيف نفسه.
+![ERX — كل معلومة لها مصدر](docs/media/social-card.svg)
+
+**كل معلومة لها مصدر.** بحث عربي موثّق للشأن المصري للباحثين والصحفيين
+ووكلاء AI.
+
+[التشغيل](#التشغيل) · [أدوات MCP](#أدوات-mcp) · [النشر](#النشر) ·
+[الهوية](BRAND.md) · [خطة التسويق](docs/go-to-market.md)
 
 ## الإمكانات الحالية
 
@@ -73,8 +78,9 @@ node dist/cli.js serve --transport http --host 127.0.0.1 --port 8000
 http://127.0.0.1:8000/mcp
 ```
 
-واجهة الباحث: `http://127.0.0.1:8000/`، خريطة المعرفة: `/knowledge`،
-الـAPI: `/api/v1/openapi.json`، وحالة الجاهزية: `/readyz`.
+Landing Page: `http://127.0.0.1:8000/`، واجهة الباحث: `/explore`،
+التوثيق: `/docs`، خريطة المعرفة: `/knowledge`، الـAPI:
+`/api/v1/openapi.json`، وحالة الجاهزية: `/readyz`.
 
 تشغيله محليًا عبر stdio:
 
@@ -104,6 +110,26 @@ docker compose up -d
 تُحفظ قاعدة البيانات في volume مستقل. أضف مهمة مجدولة خارج الحاوية لتشغيل
 `ingest` دوريًا؛ واستخدم `--full-text` فقط للمصادر التي تسمح بنيتها وسياساتها بذلك.
 راجع [دليل التشغيل](docs/operations.md) للنشر والجدولة والاستعادة.
+
+## النشر
+
+المستودع مجهز بثلاث قنوات توزيع متزامنة عند إنشاء tag:
+
+1. حزمة عامة على npm.
+2. تسجيل رسمي في MCP Registry باسم `io.github.ahmedvnabil/egypt-research`.
+3. صورة متعددة المعماريات على GitHub Container Registry.
+
+قبل أول إصدار، أنشئ مستودع GitHub العام وأضف `NPM_TOKEN` إلى Actions، ثم
+انشر staging على نطاق مستقل مثل `erx.marsaplatform.com`. لا تضف Remote URL
+إلى `server.json` قبل نجاح `/readyz` و`/mcp` عبر HTTPS.
+
+```bash
+npm run release:check
+git tag v0.5.0
+git push origin v0.5.0
+```
+
+راجع [قائمة الإطلاق](docs/launch-checklist.md) و[حزمة محتوى الإطلاق](docs/launch-content.md).
 
 ## إضافة المصدر إلى عميل MCP
 

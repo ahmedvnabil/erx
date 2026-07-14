@@ -1,12 +1,21 @@
 {
   "name": "egypt-research-mcp",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Source-grounded MCP server and research commons for Egyptian public affairs",
+  "mcpName": "io.github.ahmedvnabil/egypt-research",
   "license": "MIT",
   "type": "module",
   "main": "dist/mcp.js",
   "types": "dist/mcp.d.ts",
-  "files": ["dist", "README.md", "LICENSE"],
+  "files": ["dist", "public", "server.json", "README.md", "LICENSE"],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ahmedvnabil/egypt-research-mcp.git"
+  },
+  "homepage": "https://github.com/ahmedvnabil/egypt-research-mcp#readme",
+  "bugs": {
+    "url": "https://github.com/ahmedvnabil/egypt-research-mcp/issues"
+  },
   "keywords": ["mcp", "egypt", "research", "arabic", "open-data"],
   "publishConfig": { "access": "public" },
   "bin": {
@@ -24,7 +33,9 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
-    "audit": "npm audit --audit-level=high"
+    "audit": "npm audit --audit-level=high",
+    "release:check": "node scripts/check-release.mjs",
+    "prepublishOnly": "npm run check && npm test && npm run build"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",

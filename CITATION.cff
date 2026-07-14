@@ -1,10 +1,10 @@
 cff-version: 1.2.0
 message: "إذا استخدمت البرمجية في بحث، استشهد بها بهذا السجل."
-title: "Egypt Research MCP"
+title: "ERX — Egypt Research Commons"
 type: software
 authors:
   - family-names: "Morsy"
     given-names: "Ahmed"
-version: 0.4.0
+version: 0.5.0
 date-released: 2026-07-14
 license: MIT

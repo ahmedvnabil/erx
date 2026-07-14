@@ -1,0 +1,41 @@
+name: اقتراح مصدر
+description: اقترح مصدرًا مصريًا عامًا لإضافته إلى الكتالوج
+title: "source: "
+labels: ["source-request"]
+body:
+  - type: input
+    id: name
+    attributes:
+      label: اسم المصدر
+    validations:
+      required: true
+  - type: input
+    id: url
+    attributes:
+      label: الرابط الرسمي
+    validations:
+      required: true
+  - type: dropdown
+    id: type
+    attributes:
+      label: نوع المصدر
+      options: [رسمي, قانوني, إحصائي, أكاديمي, حقوقي, إخباري, استقصائي]
+    validations:
+      required: true
+  - type: input
+    id: channel
+    attributes:
+      label: RSS أو Sitemap مباشر إن وجد
+  - type: textarea
+    id: value
+    attributes:
+      label: لماذا يفيد الباحثين؟
+    validations:
+      required: true
+  - type: checkboxes
+    id: rights
+    attributes:
+      label: التحقق الأولي
+      options:
+        - label: الرابط عام ولا يحتاج حسابًا للوصول إلى المواد المقترحة
+          required: true

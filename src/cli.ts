@@ -97,7 +97,7 @@ async function main(argv = process.argv.slice(2)): Promise<number> {
     const host = value(args, "host", process.env["HOST"] ?? "127.0.0.1"); const port = number(args, "port", Number(process.env["PORT"] ?? 8000));
     const server = createWebServer(store);
     await new Promise<void>((resolve, reject) => server.listen(port, host, resolve).once("error", reject));
-    process.stderr.write(`Egypt Research MCP listening on http://${host}:${port}\n`);
+    process.stderr.write(`ERX — Egypt Research Commons listening on http://${host}:${port}\n`);
     process.once("SIGINT", () => server.close(() => { store.close(); process.exit(130); }));
     process.once("SIGTERM", () => server.close(() => { store.close(); process.exit(0); }));
     return 0;

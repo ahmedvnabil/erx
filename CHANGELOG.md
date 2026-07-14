@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.5.0 — 2026-07-14
+
+- إطلاق هوية ERX: Egypt Research Commons / مرصد مصر البحثي.
+- Landing Page عربية وإنجليزية مع بيانات الأرشيف الحية وواجهة بحث مستقلة.
+- توثيق مرئي كامل لأدوات MCP والحقول وتوزيع المصادر.
+- إضافة OpenGraph وrobots وsitemap وllms.txt وWeb App Manifest.
+- تجهيز npm وOfficial MCP Registry وGHCR للنشر الآلي من tags.
+- إضافة Brand System وخطة Go-to-Market وحزمة محتوى وقائمة إطلاق وrollback.
+
 ## 0.4.0 — 2026-07-14
 
 - إعادة بناء كاملة بـTypeScript وNode.js 24 دون اعتماد تشغيلي على Python.

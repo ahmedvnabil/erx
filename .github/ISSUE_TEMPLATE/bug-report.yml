@@ -1,0 +1,29 @@
+name: تقرير خلل
+description: مشكلة قابلة لإعادة الإنتاج في البحث أو الجمع أو MCP
+title: "bug: "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: observed
+    attributes:
+      label: ماذا حدث؟
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: ماذا توقعت؟
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: خطوات إعادة الإنتاج
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: الإصدار وبيئة التشغيل
+    validations:
+      required: true

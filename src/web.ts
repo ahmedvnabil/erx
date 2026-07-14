@@ -1,10 +1,12 @@
 import { randomUUID } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 
 import { exportResults, EXPORT_FORMATS, type ExportFormat } from "./exports.js";
 import { createMcpServer } from "./mcp.js";
+import { APP_JS, PRODUCT_CSS, brandSvg, docsView, landingView, llmsText, manifest, registryManifest, robots, sitemap, socialCardSvg, structuredData } from "./product.js";
 import { HybridRetriever } from "./retrieval.js";
 import type { ResearchStore } from "./store.js";
 import type { SourceType } from "./types.js";
@@ -13,10 +15,12 @@ import { APP_CSS, UTILITY_CSS, documentView, homeView, knowledgeView, methodolog
 export interface WebOptions { includeMcp?: boolean; rateLimitPerMinute?: number }
 
 const apiPaths = ["/api/", "/search", "/export", "/mcp"];
+const SOCIAL_CARD_PNG = readFileSync(new URL("../public/social-card.png", import.meta.url));
 
 export function createWebServer(store: ResearchStore, options: WebOptions = {}) {
   const limits = new Map<string, { window: number; count: number }>();
   const maximum = options.rateLimitPerMinute ?? Number(process.env["EGYPT_RESEARCH_RATE_LIMIT"] ?? 120);
+  const publicBaseUrl = normalizePublicBaseUrl(process.env["EGYPT_RESEARCH_PUBLIC_URL"]);
   return createServer(async (request, response) => {
     const requestId = randomUUID();
     securityHeaders(response, requestId);
@@ -27,7 +31,7 @@ export function createWebServer(store: ResearchStore, options: WebOptions = {}) 
       return;
     }
     try {
-      await route(store, request, response, url, options.includeMcp !== false);
+      await route(store, request, response, url, options.includeMcp !== false, publicBaseUrl);
     } catch (error) {
       if (!response.headersSent) json(response, 500, { error: { code: "internal_error", request_id: requestId } });
       else response.end();
@@ -36,9 +40,20 @@ export function createWebServer(store: ResearchStore, options: WebOptions = {}) 
   });
 }
 
-async function route(store: ResearchStore, request: IncomingMessage, response: ServerResponse, url: URL, includeMcp: boolean): Promise<void> {
+async function route(store: ResearchStore, request: IncomingMessage, response: ServerResponse, url: URL, includeMcp: boolean, configuredBaseUrl?: string): Promise<void> {
   const path = url.pathname;
-  if (path === "/static/app.css") return text(response, 200, APP_CSS + UTILITY_CSS, "text/css; charset=utf-8");
+  const baseUrl = configuredBaseUrl ?? url.origin;
+  if (path === "/static/app.css") return staticText(response, APP_CSS + UTILITY_CSS + PRODUCT_CSS, "text/css; charset=utf-8");
+  if (path === "/static/app.js") return staticText(response, APP_JS, "text/javascript; charset=utf-8");
+  if (path === "/static/brand.svg") return staticText(response, brandSvg(), "image/svg+xml; charset=utf-8");
+  if (path === "/static/social-card.svg") return staticText(response, socialCardSvg(), "image/svg+xml; charset=utf-8");
+  if (path === "/static/social-card.png") return binary(response, SOCIAL_CARD_PNG, "image/png");
+  if (path === "/manifest.webmanifest") return json(response, 200, manifest(baseUrl), "application/manifest+json; charset=utf-8");
+  if (path === "/robots.txt") return text(response, 200, robots(baseUrl));
+  if (path === "/sitemap.xml") return text(response, 200, sitemap(baseUrl), "application/xml; charset=utf-8");
+  if (path === "/llms.txt") return text(response, 200, llmsText(baseUrl));
+  if (path === "/structured-data.json") return json(response, 200, structuredData(baseUrl, store.listSources().length, store.listDocumentIds(100_000).length), "application/ld+json; charset=utf-8");
+  if (path === "/server.json" || path === "/.well-known/mcp/server.json") return json(response, 200, registryManifest(baseUrl));
   if (path === "/healthz") {
     const sources = store.listSources();
     return json(response, 200, { status: "ok", documents: sources.reduce((sum, source) => sum + source.documentCount, 0), sources: sources.length });
@@ -49,7 +64,10 @@ async function route(store: ResearchStore, request: IncomingMessage, response: S
     const body = [`# TYPE egypt_research_documents gauge`, `egypt_research_documents ${sources.reduce((sum, source) => sum + source.documentCount, 0)}`, `# TYPE egypt_research_sources gauge`, `egypt_research_sources ${sources.length}`, `# TYPE egypt_research_failed_sources gauge`, `egypt_research_failed_sources ${sources.filter((source) => source.healthStatus === "failed").length}`, `# TYPE egypt_research_failed_crawl_runs gauge`, `egypt_research_failed_crawl_runs ${runs.filter((run) => run["status"] === "failed").length}`, ""].join("\n");
     return text(response, 200, body, "text/plain; version=0.0.4; charset=utf-8");
   }
-  if (path === "/" && request.method === "GET") return html(response, 200, homeView(store.listSources(), store.listStories(8)));
+  if (path === "/" && request.method === "GET") return html(response, 200, landingView(store.listSources(), store.listStories(8), baseUrl, "ar"));
+  if (path === "/en" && request.method === "GET") return html(response, 200, landingView(store.listSources(), store.listStories(8), baseUrl, "en"));
+  if (path === "/explore" && request.method === "GET") return html(response, 200, homeView(store.listSources(), store.listStories(8)));
+  if (path === "/docs" && request.method === "GET") return html(response, 200, docsView(store.listSources(), baseUrl));
   if (path === "/search" && request.method === "GET") {
     const query = (url.searchParams.get("q") ?? "").trim();
     const mode = url.searchParams.get("mode") ?? "hybrid";
@@ -118,7 +136,7 @@ function securityHeaders(response: ServerResponse, requestId: string): void {
   response.setHeader("x-request-id", requestId); response.setHeader("x-content-type-options", "nosniff");
   response.setHeader("referrer-policy", "strict-origin-when-cross-origin"); response.setHeader("x-frame-options", "DENY");
   response.setHeader("permissions-policy", "camera=(), microphone=(), geolocation=()");
-  response.setHeader("content-security-policy", "default-src 'self'; script-src 'self' https://unpkg.com; style-src 'self' 'sha256-bsV5JivYxvGywDAZ22EZJKBFip65Ng9xoJVLbBg7bdo='; connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'");
+  response.setHeader("content-security-policy", "default-src 'self'; script-src 'self' https://unpkg.com https://cdnjs.cloudflare.com; style-src 'self' 'sha256-bsV5JivYxvGywDAZ22EZJKBFip65Ng9xoJVLbBg7bdo='; connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'");
 }
 
 function limited(request: IncomingMessage, limits: Map<string, { window: number; count: number }>, maximum: number): boolean {
@@ -141,5 +159,17 @@ async function readJson(request: IncomingMessage, maximum: number): Promise<unkn
 
 function html(response: ServerResponse, status: number, body: string): void { text(response, status, body, "text/html; charset=utf-8"); }
 function text(response: ServerResponse, status: number, body: string, contentType = "text/plain; charset=utf-8"): void { response.statusCode = status; response.setHeader("content-type", contentType); response.end(body); }
-function json(response: ServerResponse, status: number, body: unknown): void { text(response, status, JSON.stringify(body), "application/json; charset=utf-8"); }
+function json(response: ServerResponse, status: number, body: unknown, contentType = "application/json; charset=utf-8"): void { text(response, status, JSON.stringify(body), contentType); }
 function jsonRpc(response: ServerResponse, status: number, code: number, message: string): void { json(response, status, { jsonrpc: "2.0", error: { code, message }, id: null }); }
+function staticText(response: ServerResponse, body: string, contentType: string): void { response.setHeader("cache-control", "public, max-age=3600"); text(response, 200, body, contentType); }
+function binary(response: ServerResponse, body: Buffer, contentType: string): void { response.statusCode = 200; response.setHeader("content-type", contentType); response.setHeader("cache-control", "public, max-age=86400"); response.end(body); }
+
+export function normalizePublicBaseUrl(value: string | undefined): string | undefined {
+  if (!value) return undefined;
+  let parsed: URL;
+  try { parsed = new URL(value); } catch { throw new Error("EGYPT_RESEARCH_PUBLIC_URL must be a clean HTTP(S) origin"); }
+  if (!["http:", "https:"].includes(parsed.protocol) || parsed.username || parsed.password || parsed.pathname !== "/" || parsed.search || parsed.hash) {
+    throw new Error("EGYPT_RESEARCH_PUBLIC_URL must be a clean HTTP(S) origin");
+  }
+  return parsed.origin;
+}

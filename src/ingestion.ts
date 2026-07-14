@@ -17,7 +17,7 @@ export interface IngestionReport {
   errorMessage: string | null;
 }
 
-const USER_AGENT = "EgyptResearchMCP/0.4 (+research archive; contact=repository)";
+const USER_AGENT = "ERX-EgyptResearch/0.5 (+research archive; contact=repository)";
 const emptyReport = (sourceSlug: string): IngestionReport => ({ sourceSlug, status: "empty", itemsFound: 0, itemsSaved: 0, itemsEnriched: 0, enrichmentFailures: 0, errorCode: null, errorMessage: null });
 const sleep = (seconds: number) => new Promise((resolve) => setTimeout(resolve, seconds * 1_000));
 

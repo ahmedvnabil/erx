@@ -9,6 +9,7 @@ services:
     environment:
       EGYPT_RESEARCH_DB: /data/research.db
       EGYPT_RESEARCH_RATE_LIMIT: ${EGYPT_RESEARCH_RATE_LIMIT:-120}
+      EGYPT_RESEARCH_PUBLIC_URL: ${EGYPT_RESEARCH_PUBLIC_URL:-http://127.0.0.1:8000}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
     read_only: true
     tmpfs:

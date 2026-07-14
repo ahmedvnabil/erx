@@ -7,6 +7,12 @@ RUN npm ci && npm run build
 
 FROM node:24-bookworm-slim AS runtime
 
+LABEL org.opencontainers.image.title="Egypt Research Commons" \
+      org.opencontainers.image.description="Source-grounded research infrastructure for Egyptian public affairs" \
+      org.opencontainers.image.source="https://github.com/ahmedvnabil/egypt-research-mcp" \
+      org.opencontainers.image.licenses="MIT" \
+      io.modelcontextprotocol.server.name="io.github.ahmedvnabil/egypt-research"
+
 ENV NODE_ENV=production \
     EGYPT_RESEARCH_DB=/data/research.db
 
@@ -19,6 +25,7 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev --ignore-scripts && npm cache clean --force
 COPY --from=builder /build/dist ./dist
+COPY public ./public
 COPY deploy ./deploy
 RUN chmod 0555 /app/deploy/collect-and-index.sh
 

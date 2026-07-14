@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { createWebServer } from "../src/web.js";
+import { createWebServer, normalizePublicBaseUrl } from "../src/web.js";
 import { ResearchStore } from "../src/store.js";
 
 const open: Array<ReturnType<typeof createWebServer>> = [];
@@ -23,17 +23,44 @@ async function fixture(rateLimitPerMinute = 120) {
 }
 
 describe("web and REST", () => {
-  it("serves Arabic UI, search, health, and source-backed REST", async () => {
+  it("accepts only a clean HTTP(S) origin for public metadata", () => {
+    expect(normalizePublicBaseUrl("https://erx.example.org/")).toBe("https://erx.example.org");
+    expect(() => normalizePublicBaseUrl("javascript:alert(1)")).toThrow("HTTP(S) origin");
+    expect(() => normalizePublicBaseUrl("https://erx.example.org/path")).toThrow("HTTP(S) origin");
+  });
+
+  it("serves the Arabic product landing, explorer, health, and source-backed REST", async () => {
     const { base } = await fixture();
-    const [home, search, api, health] = await Promise.all([
-      fetch(base), fetch(`${base}/search?q=${encodeURIComponent("قرار اقتصادي")}`),
+    const [home, explorer, search, api, health] = await Promise.all([
+      fetch(base), fetch(`${base}/explore`), fetch(`${base}/search?q=${encodeURIComponent("قرار اقتصادي")}`),
       fetch(`${base}/api/v1/search?q=${encodeURIComponent("قرار اقتصادي")}&mode=hybrid`), fetch(`${base}/healthz`)
     ]);
-    expect(await home.text()).toContain("مرصد مصر البحثي");
+    const landing = await home.text();
+    expect(landing).toContain("كل معلومة لها مصدر");
+    expect(landing).toContain("14 أداة MCP");
+    expect(landing).toContain('property="og:title"');
+    expect(landing).toContain('application/ld+json');
+    expect(await explorer.text()).toContain("ابدأ البحث");
     expect(await search.text()).toContain("قرار اقتصادي مصري موثق");
     const body = await api.json() as { results: Array<{ citation: { url: string } }> };
     expect(body.results[0]?.citation.url).toBe("https://example.org/decision/1");
     expect(await health.json()).toEqual(expect.objectContaining({ status: "ok", documents: 1 }));
+  });
+
+  it("serves launch, discovery, brand, and bilingual documentation surfaces", async () => {
+    const { base } = await fixture();
+    const paths = ["/en", "/docs", "/robots.txt", "/sitemap.xml", "/llms.txt", "/manifest.webmanifest", "/static/brand.svg", "/static/app.js", "/static/social-card.png"];
+    const responses = await Promise.all(paths.map((path) => fetch(base + path)));
+    expect(responses.every((response) => response.ok)).toBe(true);
+    expect(await responses[0]!.text()).toContain("Every claim needs a source");
+    expect(await responses[1]!.text()).toContain("search_egypt");
+    expect(await responses[2]!.text()).toContain("Sitemap:");
+    expect(await responses[3]!.text()).toContain("<urlset");
+    expect(await responses[4]!.text()).toContain("## MCP tools");
+    expect((await responses[5]!.json() as { name: string }).name).toContain("ERX");
+    expect(responses[6]!.headers.get("content-type")).toContain("image/svg+xml");
+    expect(await responses[7]!.text()).toContain("clipboard.writeText");
+    expect(responses[8]!.headers.get("content-type")).toContain("image/png");
   });
 
   it("adds security headers and bounded API rate limiting", async () => {

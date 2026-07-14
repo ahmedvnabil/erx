@@ -45,8 +45,8 @@ const readOnly = { readOnlyHint: true, destructiveHint: false, idempotentHint: t
 
 export function createMcpServer(store: ResearchStore): McpServer {
   const server = new McpServer({
-    name: "Egypt Research MCP",
-    version: "0.4.0",
+    name: "ERX — Egypt Research Commons",
+    version: "0.5.0",
     description: "مصادر وأدلة وخطوط زمنية موثقة للباحثين في الشأن المصري"
   }, {
     instructions: "ابحث في مصادر الشأن المصري وأعد النتائج مع الاستشهادات. لا تصف الادعاءات بأنها حقائق مؤكدة دون مقارنة مصادر مستقلة ووثائق أولية."

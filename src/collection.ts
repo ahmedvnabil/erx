@@ -167,7 +167,7 @@ export async function readResponseBuffer(response: Response, maxBytes: number): 
 export async function fetchArticle(url: string, allowedHost: string, fetcher: typeof fetch = fetch): Promise<ExtractedArticle> {
   const parsed = new URL(url);
   if (!hostAllowed(parsed.hostname, allowedHost)) throw new Error("URL is outside the configured source host");
-  const response = await fetcher(url, { headers: { "user-agent": "EgyptResearchMCP/0.4 (+research; respectful crawler)", accept: "text/html,application/xhtml+xml" }, redirect: "error", signal: AbortSignal.timeout(20_000) });
+  const response = await fetcher(url, { headers: { "user-agent": "ERX-EgyptResearch/0.5 (+research; respectful crawler)", accept: "text/html,application/xhtml+xml" }, redirect: "error", signal: AbortSignal.timeout(20_000) });
   if (!response.ok) throw new Error(`Article request failed with HTTP ${response.status}`);
   if (!(response.headers.get("content-type") ?? "").includes("html")) throw new Error("Article response is not HTML");
   return extractArticle((await readResponseBuffer(response, 5_000_000)).toString("utf8"), canonicalizeUrl(url));

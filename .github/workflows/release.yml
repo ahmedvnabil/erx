@@ -6,9 +6,10 @@ on:
 
 permissions:
   contents: write
+  id-token: write
 
 jobs:
-  package:
+  publish:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -16,11 +17,24 @@ jobs:
         with:
           node-version: "24"
           cache: npm
+          registry-url: https://registry.npmjs.org
       - run: npm ci
+      - run: npm run release:check
       - run: npm run check
       - run: npm run test:coverage
+      - run: npm run audit
       - run: npm run build
       - run: npm pack
+      - name: Publish npm package
+        run: npm publish --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Install MCP publisher
+        run: curl -L "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/').tar.gz" | tar xz mcp-publisher
+      - name: Publish to Official MCP Registry
+        run: |
+          ./mcp-publisher login github-oidc
+          ./mcp-publisher publish
       - uses: softprops/action-gh-release@v2
         with:
           files: egypt-research-mcp-*.tgz
