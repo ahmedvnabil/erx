@@ -60,7 +60,9 @@ async function route(store: ResearchStore, request: IncomingMessage, response: S
   if (path === "/server.json" || path === "/.well-known/mcp/server.json") return json(response, 200, registryManifest(baseUrl));
   if (path === "/healthz") {
     const sources = store.listSources();
-    return json(response, 200, { status: "ok", documents: sources.reduce((sum, source) => sum + source.documentCount, 0), sources: sources.length });
+    const documents = sources.reduce((sum, source) => sum + source.documentCount, 0);
+    const excluded = store.countExcludedDocuments();
+    return json(response, 200, { status: "ok", documents, searchable_documents: documents - excluded, excluded_documents: excluded, sources: sources.length });
   }
   if (path === "/readyz") return json(response, store.integrityCheck() === "ok" ? 200 : 503, { status: store.integrityCheck() === "ok" ? "ready" : "not_ready" });
   if (path === "/metrics") {

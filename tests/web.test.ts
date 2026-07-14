@@ -55,7 +55,7 @@ describe("web and REST", () => {
     expect(await search.text()).toContain("قرار اقتصادي مصري موثق");
     const body = await api.json() as { results: Array<{ citation: { url: string } }> };
     expect(body.results[0]?.citation.url).toBe("https://example.org/decision/1");
-    expect(await health.json()).toEqual(expect.objectContaining({ status: "ok", documents: 1 }));
+    expect(await health.json()).toEqual(expect.objectContaining({ status: "ok", documents: 1, searchable_documents: 1, excluded_documents: 0 }));
   });
 
   it("serves launch, discovery, brand, and bilingual documentation surfaces", async () => {

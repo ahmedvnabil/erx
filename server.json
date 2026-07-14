@@ -3,7 +3,7 @@
   "name": "io.github.ahmedvnabil/egypt-research",
   "title": "Egypt Research Commons",
   "description": "Source-grounded research for Egyptian public affairs",
-  "version": "0.9.1",
+  "version": "0.9.2",
   "websiteUrl": "https://erx-mcp.zad.tools",
   "repository": {
     "id": "1300883187",
@@ -20,7 +20,7 @@
     {
       "registryType": "npm",
       "identifier": "egypt-research-mcp",
-      "version": "0.9.1",
+      "version": "0.9.2",
       "transport": {
         "type": "stdio"
       }
