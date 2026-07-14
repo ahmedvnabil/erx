@@ -17,6 +17,8 @@ describe("Arabic text helpers", () => {
     ]));
     expect(expandArabicSearchToken("لاجئين")).toEqual(expect.arrayContaining(["لاجيين", "اللاجيين", "لاجيون", "اللاجيون"]));
     expect(expandArabicSearchToken("باللاجئين")).toEqual(expect.arrayContaining(["باللاجيين", "اللاجيين", "لاجيين"]));
+    expect(expandArabicSearchToken("قضية")).toContain("قضايا");
+    expect(expandArabicSearchToken("قضايا")).toContain("قضيه");
   });
 
   it("classifies legal and human-rights material", () => {

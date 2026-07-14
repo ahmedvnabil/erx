@@ -76,6 +76,8 @@ export function expandArabicSearchToken(value: string): string[] {
     bareForms.add(`${stem}ون`);
     bareForms.add(`${stem}ين`);
   }
+  if (bare.endsWith("يه") && bare.length > 3) bareForms.add(`${bare.slice(0, -2)}ايا`);
+  if (bare.endsWith("ايا") && bare.length > 4) bareForms.add(`${bare.slice(0, -3)}يه`);
 
   const variants = new Set([token, articleForm]);
   for (const form of bareForms) {
