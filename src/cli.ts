@@ -58,7 +58,7 @@ async function main(argv = process.argv.slice(2)): Promise<number> {
     store.close(); return 0;
   }
   if (args.command === "reclassify") {
-    const result = store.reclassifyDocuments();
+    const result = { ...store.reclassifyDocuments(), ...store.rebuildStories() };
     output({ status: "ok", ...result }); store.close(); return 0;
   }
   if (args.command === "audit-sources") {

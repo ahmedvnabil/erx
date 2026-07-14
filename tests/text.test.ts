@@ -26,6 +26,7 @@ describe("Arabic text helpers", () => {
 
   it("flags sports and entertainment noise without hiding public-affairs coverage", () => {
     expect(isNonResearchContent("مبابي ضد لامين والتشكيل الرسمي لمباراة كأس العالم")).toBe(true);
+    expect(isNonResearchContent("إنهاء الأهلي عقد تريزيجيه وحفل عمرو دياب")).toBe(true);
     expect(isNonResearchContent("وزارة الشباب والرياضة تناقش قانون الرياضة المصري")).toBe(false);
     expect(isNonResearchContent("بيان عن قانون العمل والعدالة الاجتماعية")).toBe(false);
   });

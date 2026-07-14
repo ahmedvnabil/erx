@@ -78,7 +78,7 @@ export class KnowledgeIndexer {
 function discoverEntities(value: string): Array<[string, string]> {
   const normalized = normalizeArabic(value);
   const found = new Map<string, string>();
-  const stop = new Set(["تعلن", "اعلن", "قال", "تقول", "بشأن", "بشان", "عن", "في", "من", "الى", "الي", "قرار", "قرارا", "بيان", "بيانا", "قررت", "يتناول", "تناول", "اخلاء", "سبيل"]);
+  const stop = new Set(["تعلن", "اعلن", "قال", "تقول", "بشأن", "بشان", "عن", "في", "من", "الى", "الي", "قرار", "قرارا", "بيان", "بيانا", "قررت", "يتناول", "تناول", "اخلاء", "سبيل", "بعدم", "الدعوى", "الدعوي", "والزمت", "لصالح", "على", "ان", "اليوم", "المقرر", "تنظر", "بحث", "يبحث", "شارك", "مناقشه", "مناقشة", "بشأن"]);
   for (const [prefix, entityType] of entityPrefixes) {
     const pattern = new RegExp(`${prefix}(?:\\s+[ء-ي]{2,}){1,4}`, "gu");
     for (const match of normalized.matchAll(pattern)) {

@@ -421,6 +421,21 @@ export class ResearchStore {
     return { excluded, searchable: this.count("documents") - this.countExcludedDocuments() };
   }
 
+  rebuildStories(): { stories: number; linkedDocuments: number } {
+    this.transaction(() => {
+      this.db.exec("DELETE FROM story_documents");
+      this.db.exec("DELETE FROM stories");
+    });
+    let linkedDocuments = 0;
+    for (const documentId of this.listDocumentIds(100_000)) {
+      const document = this.getDocument(documentId);
+      if (!document || document.documentType === "excluded") continue;
+      this.assignStory(documentId);
+      linkedDocuments += 1;
+    }
+    return { stories: this.count("stories"), linkedDocuments };
+  }
+
   countExcludedDocuments(): number {
     const row = this.db.prepare("SELECT COUNT(*) AS count FROM documents WHERE document_type='excluded'").get() as Row;
     return asNumber(row["count"]);

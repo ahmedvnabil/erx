@@ -86,6 +86,8 @@ describe("ResearchStore", () => {
     const second = store.upsertDocument({ externalId: "policy-2", sourceSlug: source.slug, canonicalUrl: "https://example.com/policy/2", title: "الرئاسة تعلن قرارا جديدا بشأن الاقتصاد", content: "أعلنت الرئاسة قرارا جديدا بشأن الاقتصاد.", publishedAt: "2026-07-15T10:00:00.000Z" });
     store.assignStory(first.documentId); store.assignStory(second.documentId);
     expect(store.listStories(10).find((story) => story["documentCount"] === 2)?.["sourceCount"]).toBe(1);
+    expect(store.rebuildStories().linkedDocuments).toBe(2);
+    expect(store.listStories(10).some((story) => story["documentCount"] === 2)).toBe(true);
     store.close();
   });
 
