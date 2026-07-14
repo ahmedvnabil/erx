@@ -6,4 +6,4 @@ Wants=network-online.target
 [Service]
 Type=oneshot
 WorkingDirectory=/opt/erx
-ExecStart=/usr/bin/docker compose run --rm egypt-research /app/deploy/collect-and-index.sh
+ExecStart=/usr/bin/docker compose --env-file deploy/production.env run --rm egypt-research /app/deploy/collect-and-index.sh
