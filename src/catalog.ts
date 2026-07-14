@@ -31,7 +31,7 @@ const seeds: Seed[] = [
   ["ahram-gate", "بوابة الأهرام", "https://gate.ahram.org.eg", "news", "state_media"],
   ["shorouk-news", "الشروق", "https://www.shorouknews.com", "news", "private_media"],
   ["almasryalyoum", "المصري اليوم", "https://www.almasryalyoum.com", "news", "private_media", "ar", "https://www.almasryalyoum.com/rss/rssfeeds"],
-  ["masrawy", "مصراوي", "https://www.masrawy.com", "news", "private_media", "ar", undefined, "https://www.masrawy.com/feeds/sitemap"],
+  ["masrawy", "مصراوي", "https://www.masrawy.com", "news", "private_media", "ar", "https://www.masrawy.com/rss/feed/25/أخبار"],
   ["mada-masr", "مدى مصر", "https://www.madamasr.com", "investigative", "independent_media", "mixed", "https://www.madamasr.com/feed/"],
   ["manassa", "المنصة", "https://manassa.news", "investigative", "independent_media"],
   ["cairo24", "القاهرة 24", "https://www.cairo24.com", "news", "private_media", "ar", undefined, "https://www.cairo24.com/sitemaps.xml"],
