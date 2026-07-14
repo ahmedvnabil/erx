@@ -40,6 +40,8 @@ const nonResearchKeywords = [
   "سينما", "دراما", "حفل غنائي", "عمرو دياب"
 ];
 const publicAffairsExceptions = ["وزاره الشباب والرياضه", "قانون الرياضه", "الرياضه المصريه"];
+const internationalOnlyKeywords = ["ترامب", "غزو العراق", "العراق", "ايران", "الاهواز", "واشنطن", "طهران", "روسيا", "اوكرانيا"];
+const egyptContextKeywords = ["مصر", "المصري", "المصريه", "القاهره", "السيسي", "سيناء", "رفح", "الحكومه المصريه", "البرلمان المصري", "الحدود المصريه"];
 
 export function normalizeArabic(value: string): string {
   return (value ?? "")
@@ -92,6 +94,12 @@ export function isNonResearchContent(value: string): boolean {
   const normalized = normalizeArabic(value);
   if (publicAffairsExceptions.some((keyword) => normalized.includes(normalizeArabic(keyword)))) return false;
   return nonResearchKeywords.some((keyword) => normalized.includes(normalizeArabic(keyword)));
+}
+
+export function isOutOfScopeContent(value: string): boolean {
+  const normalized = normalizeArabic(value);
+  return internationalOnlyKeywords.some((keyword) => normalized.includes(normalizeArabic(keyword)))
+    && !egyptContextKeywords.some((keyword) => normalized.includes(normalizeArabic(keyword)));
 }
 
 export function headlineTokens(value: string): Set<string> {

@@ -4,7 +4,7 @@ import { dirname, resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
 import { MIGRATIONS, SCHEMA } from "./schema.js";
-import { expandArabicSearchToken, headlineTokens, isNonResearchContent, jaccard, normalizeArabic, tokenizeQuery } from "./text.js";
+import { expandArabicSearchToken, headlineTokens, isNonResearchContent, isOutOfScopeContent, jaccard, normalizeArabic, tokenizeQuery } from "./text.js";
 import type {
   ClaimRecord,
   DocumentInput,
@@ -46,6 +46,11 @@ function relatedToken(left: string, right: string): boolean {
   if (left === right) return true;
   if (left.length < 4 || right.length < 4) return false;
   return left.startsWith(right) || right.startsWith(left);
+}
+
+function tokenSetSimilarity(left: Set<string>, right: Set<string>, shared = [...left].filter((token) => [...right].some((candidate) => relatedToken(token, candidate))).length): number {
+  if (left.size === 0 || right.size === 0) return 0;
+  return shared / (left.size + right.size - shared);
 }
 
 function validateHttpUrl(value: string, field: string): void {
@@ -195,7 +200,8 @@ export class ResearchStore {
     const excerpt = document.excerpt ?? "";
     const content = document.content ?? "";
     const topics = document.topics ?? [];
-    const documentType = isNonResearchContent(`${document.title}\n${excerpt}\n${content}`) ? "excluded" : document.documentType ?? "article";
+    const corpusText = `${document.title}\n${excerpt}\n${content}`;
+    const documentType = isNonResearchContent(corpusText) || isOutOfScopeContent(corpusText) ? "excluded" : document.documentType ?? "article";
     const digest = createHash("sha256").update(JSON.stringify([document.title, excerpt, content])).digest("hex");
     const timestamp = now();
     return this.transaction(() => {
@@ -394,8 +400,9 @@ export class ResearchStore {
     let best: Row | undefined;
     let score = threshold;
     for (const candidate of candidates) {
-      const candidateScore = jaccard(tokens, new Set(parseJson<string[]>(candidate["tokens_json"], [])));
-      const shared = [...tokens].filter((token) => new Set(parseJson<string[]>(candidate["tokens_json"], [])).has(token)).length;
+      const candidateTokens = new Set(parseJson<string[]>(candidate["tokens_json"], []));
+      const shared = [...tokens].filter((token) => [...candidateTokens].some((candidateToken) => relatedToken(token, candidateToken))).length;
+      const candidateScore = tokenSetSimilarity(tokens, candidateTokens, shared);
       if (shared >= 2 && candidateScore >= score) { best = candidate; score = candidateScore; }
     }
     const storyId = this.transaction(() => {
@@ -441,7 +448,8 @@ export class ResearchStore {
     for (const documentId of this.listDocumentIds(100_000)) {
       const document = this.getDocument(documentId);
       if (!document || document.documentType === "excluded") continue;
-      if (!isNonResearchContent(`${document.title}\n${document.excerpt}\n${document.content ?? ""}`)) continue;
+      const corpusText = `${document.title}\n${document.excerpt}\n${document.content ?? ""}`;
+      if (!isNonResearchContent(corpusText) && !isOutOfScopeContent(corpusText)) continue;
       this.transaction(() => {
         this.db.prepare("UPDATE documents SET document_type='excluded', updated_at=? WHERE id=?").run(now(), documentId);
         this.db.prepare("DELETE FROM story_documents WHERE document_id=?").run(documentId);

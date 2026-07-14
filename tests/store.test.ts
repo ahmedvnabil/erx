@@ -82,6 +82,9 @@ describe("ResearchStore", () => {
     const noisy = store.upsertDocument({ externalId: "sports-1", sourceSlug: source.slug, canonicalUrl: "https://example.com/sports/1", title: "مبابي ضد لامين في كأس العالم", content: "التشكيل الرسمي وركلات الترجيح.", publishedAt: "2026-07-14T10:00:00.000Z" });
     expect(store.getDocument(noisy.documentId)?.documentType).toBe("excluded");
     expect(store.search("مبابي")).toEqual([]);
+    const foreign = store.upsertDocument({ externalId: "foreign-1", sourceSlug: source.slug, canonicalUrl: "https://example.com/world/1", title: "ترامب عن غزو العراق", content: "تفاصيل دولية من بغداد.", publishedAt: "2026-07-14T10:00:00.000Z" });
+    expect(store.getDocument(foreign.documentId)?.documentType).toBe("excluded");
+    expect(store.search("ترامب")).toEqual([]);
     const first = store.upsertDocument({ externalId: "policy-1", sourceSlug: source.slug, canonicalUrl: "https://example.com/policy/1", title: "الرئاسة تعلن قرارا اقتصاديا جديدا", content: "أعلنت الرئاسة قرارا اقتصاديا جديدا.", publishedAt: "2026-07-14T10:00:00.000Z" });
     const second = store.upsertDocument({ externalId: "policy-2", sourceSlug: source.slug, canonicalUrl: "https://example.com/policy/2", title: "الرئاسة تعلن قرارا جديدا بشأن الاقتصاد", content: "أعلنت الرئاسة قرارا جديدا بشأن الاقتصاد.", publishedAt: "2026-07-15T10:00:00.000Z" });
     store.assignStory(first.documentId); store.assignStory(second.documentId);

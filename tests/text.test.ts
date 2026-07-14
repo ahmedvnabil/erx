@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { classifyDocument, expandArabicSearchToken, isNonResearchContent, normalizeArabic, tokenizeQuery } from "../src/text.js";
+import { classifyDocument, expandArabicSearchToken, isNonResearchContent, isOutOfScopeContent, normalizeArabic, tokenizeQuery } from "../src/text.js";
 
 describe("Arabic text helpers", () => {
   it("normalizes Arabic variants and removes diacritics", () => {
@@ -29,5 +29,10 @@ describe("Arabic text helpers", () => {
     expect(isNonResearchContent("إنهاء الأهلي عقد تريزيجيه وحفل عمرو دياب")).toBe(true);
     expect(isNonResearchContent("وزارة الشباب والرياضة تناقش قانون الرياضة المصري")).toBe(false);
     expect(isNonResearchContent("بيان عن قانون العمل والعدالة الاجتماعية")).toBe(false);
+  });
+
+  it("flags foreign-only news but keeps Egypt-linked international affairs", () => {
+    expect(isOutOfScopeContent("ترامب عن غزو العراق وانفجارات في بغداد")).toBe(true);
+    expect(isOutOfScopeContent("الرئيس السيسي يبحث تداعيات الحرب على مصر")).toBe(false);
   });
 });
