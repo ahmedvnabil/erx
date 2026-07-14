@@ -30,4 +30,10 @@ describe("release metadata", () => {
   it("documents every public MCP tool exactly once", () => {
     expect(MCP_TOOL_DOCS.map(([name]) => name).sort()).toEqual([...TOOL_NAMES].sort());
   });
+
+  it("prepares both persistent volumes for the non-root runtime user", () => {
+    const dockerfile = readFileSync("Dockerfile", "utf8");
+    expect(dockerfile).toContain("mkdir -p /data /backups");
+    expect(dockerfile).toContain("chown -R app:app /data /backups");
+  });
 });

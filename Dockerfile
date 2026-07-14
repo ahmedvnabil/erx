@@ -29,7 +29,7 @@ COPY public ./public
 COPY deploy ./deploy
 RUN chmod 0555 /app/deploy/collect-and-index.sh
 
-RUN mkdir -p /data && chown -R app:app /data
+RUN mkdir -p /data /backups && chown -R app:app /data /backups
 USER app
 EXPOSE 8000
 
