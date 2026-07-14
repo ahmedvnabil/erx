@@ -1,0 +1,31 @@
+services:
+  egypt-research:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - egypt-research-data:/data
+      - egypt-research-backups:/backups
+    environment:
+      EGYPT_RESEARCH_DB: /data/research.db
+      EGYPT_RESEARCH_RATE_LIMIT: ${EGYPT_RESEARCH_RATE_LIMIT:-120}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+    read_only: true
+    tmpfs:
+      - /tmp:size=512m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2G
+        reservations:
+          memory: 256M
+    restart: unless-stopped
+
+volumes:
+  egypt-research-data:
+  egypt-research-backups:

@@ -1,0 +1,135 @@
+# Egypt Research MCP
+
+بنية معرفة مفتوحة وموثقة المصدر للشأن المصري. تجمع واجهة بحث عربية للباحثين
+مع Model Context Protocol للوكلاء، فوق الأرشيف نفسه.
+
+## الإمكانات الحالية
+
+- كتالوج من 33 مصدرًا رسميًا وقانونيًا وأكاديميًا وإحصائيًا وإخباريًا وحقوقيًا.
+- جمع مباشر من RSS وخرائط المواقع دون الاعتماد على Google News.
+- استخراج HTML وPDF، مع طبقة النص أولًا ثم OCR عربي محدود الموارد عند الحاجة.
+- احترام `robots.txt` وسياسة تأخير مستقلة لكل مصدر وحدود للحجم والصفحات.
+- أرشفة إصدارات الوثائق عند تغير محتواها.
+- تجميع التغطيات المتشابهة في قصص مع إظهار عدد الوثائق وتنوع المصادر.
+- سجل لكل عملية جمع، بما فيها الفشل والمدة وعدد المواد.
+- بحث عربي هجين يجمع SQLite FTS5 وتمثيلًا دلاليًا محليًا قابلًا للتفسير.
+- دعم اختياري لـ Gemini Embeddings عبر `GEMINI_API_KEY`.
+- استخراج كيانات وأحداث وادعاءات منسوبة وربطها بالأدلة الأصلية.
+- تصنيف موضوعي عربي قابل للمراجعة.
+- روابط واستشهادات أصلية مع تاريخ النشر والأرشفة.
+- تصدير CSV وJSONL وBibTeX وRIS.
+- واجهة عربية RTL تعمل دون حساب مستخدم.
+- Streamable HTTP للاستخدام البعيد وstdio للاستخدام المحلي.
+- REST API مستقرة تحت `/api/v1` مع وصف OpenAPI.
+- readiness ومقاييس Prometheus وتحديد معدل ورؤوس أمان.
+- نسخ واستعادة SQLite متسقان مع فحص سلامة ونسخة أمان قبل الاستعادة.
+
+## أدوات MCP
+
+| الأداة | الاستخدام |
+|---|---|
+| `search_egypt` | البحث بالنص ونوع المصدر والفترة الزمنية |
+| `get_document` | استرجاع وثيقة كاملة مع الاستشهاد |
+| `build_timeline` | بناء خط زمني لموضوع أو قضية |
+| `compare_sources` | مقارنة التغطية حسب نوع المصدر |
+| `get_source_profile` | معلومات المصدر وصحة الجمع |
+| `list_sources` | عرض كتالوج المصادر |
+| `get_daily_brief` | مواد يوم محدد وتنوع مصادرها |
+| `list_stories` | القصص المتقاربة وتنوع ناشريها |
+| `export_references` | تصدير نتائج قابلة للإدخال في Zotero ومديري المراجع |
+| `hybrid_search` | بحث نصي ودلالي مع سبب ترتيب كل نتيجة |
+| `find_entities` | الكيانات المستخرجة وعدد الوثائق والظهور |
+| `list_events` | الأحداث المؤرخة ووثائقها الأصلية |
+| `trace_claim` | تتبع الادعاء إلى كل دليل ومصدر أورده |
+| `save_research_query` | حفظ استعلام متابعة محلي |
+
+يوفر السيرفر أيضًا موارد `egypt://sources` و`egypt://taxonomy` و`egypt://methodology`، بالإضافة إلى prompts للبحث المنظم والتحقق من الادعاءات.
+
+## التشغيل
+
+يتطلب Python 3.11 أو أحدث و[uv](https://docs.astral.sh/uv/).
+
+```bash
+uv sync --extra dev
+uv run egypt-research-mcp init
+uv run egypt-research-mcp seed
+uv run egypt-research-mcp ingest
+uv run egypt-research-mcp ingest --source eipr --full-text
+uv run egypt-research-mcp ingest --channel sitemap --max-urls 200
+uv run egypt-research-mcp index --provider local
+uv run egypt-research-mcp status
+```
+
+تشغيل واجهة الباحث وMCP معًا:
+
+```bash
+uv run egypt-research-mcp serve --transport http --host 127.0.0.1 --port 8000
+```
+
+عنوان الاتصال:
+
+```text
+http://127.0.0.1:8000/mcp
+```
+
+واجهة الباحث: `http://127.0.0.1:8000/`، خريطة المعرفة: `/knowledge`،
+الـAPI: `/api/v1/openapi.json`، وحالة الجاهزية: `/readyz`.
+
+تشغيله محليًا عبر stdio:
+
+```bash
+uv run egypt-research-mcp serve --transport stdio
+```
+
+يمكن تغيير قاعدة البيانات عبر `--database` أو متغير البيئة `EGYPT_RESEARCH_DB`.
+
+النسخ والاستعادة:
+
+```bash
+uv run egypt-research-mcp backup --output backups/snapshot.db
+uv run egypt-research-mcp verify-backup --input backups/snapshot.db
+uv run egypt-research-mcp restore --input backups/snapshot.db --yes
+```
+
+## Docker
+
+```bash
+docker compose build
+docker compose run --rm egypt-research egypt-research-mcp seed
+docker compose run --rm egypt-research egypt-research-mcp ingest
+docker compose up -d
+```
+
+تُحفظ قاعدة البيانات في volume مستقل. أضف مهمة مجدولة خارج الحاوية لتشغيل
+`ingest` دوريًا؛ واستخدم `--full-text` فقط للمصادر التي تسمح بنيتها وسياساتها بذلك.
+راجع [دليل التشغيل](docs/operations.md) للنشر والجدولة والاستعادة.
+
+## إضافة المصدر إلى عميل MCP
+
+مثال لعميل يدعم Streamable HTTP:
+
+```json
+{
+  "mcpServers": {
+    "egypt-research": {
+      "url": "http://127.0.0.1:8000/mcp"
+    }
+  }
+}
+```
+
+## الاختبارات
+
+```bash
+uv run pytest --cov=egypt_research_mcp --cov-report=term-missing
+```
+
+## المنهجية والحدود
+
+- المنصة لا تمنح المصادر درجة حقيقة آلية.
+- تكرار ادعاء في عدة مصادر لا يعني أنه تحقق بصورة مستقلة.
+- بعض المصادر موجودة في الكتالوج دون جمع آلي حتى تتوفر لها قناة مباشرة موثقة.
+- المحتوى المتاح يعتمد على ما تنشره قناة المصدر؛ يظل الرابط الأصلي هو المرجع النهائي.
+- تجميع القصص تشابه نصي مساعد وليس حكمًا تحريريًا أو تحققًا آليًا.
+- الكود MIT، لكن حقوق المواد المفهرسة تظل لأصحاب المصادر الأصلية.
+- الوضع الافتراضي يربط السيرفر بـ`127.0.0.1`. يجب إضافة HTTPS وبوابة موثوقة وتحديد معدل موزع عند تشغيل عدة نسخ عامة.

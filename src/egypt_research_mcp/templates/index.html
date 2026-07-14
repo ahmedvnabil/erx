@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="max-w-7xl mx-auto px-4 pt-14 pb-8 grid lg:grid-cols-[1.4fr_.6fr] gap-10 items-end">
+  <div>
+    <p class="label">EGYPT RESEARCH COMMONS / النسخة العامة</p>
+    <h1 class="text-5xl md:text-7xl font-black leading-[1.05] mt-4">ابحث في الشأن المصري.<br><span class="text-[#57e389]">واعرف مصدر كل معلومة.</span></h1>
+    <p class="max-w-2xl mt-6 text-[#b7bec2] text-lg">أخبار، وثائق رسمية، قانون، حقوق إنسان، إحصاءات وأبحاث — في فهرس واحد قابل للاستشهاد والمقارنة.</p>
+  </div>
+  <dl class="grid grid-cols-3 border-2 border-[#eef0e8] divide-x-2 divide-x-reverse divide-[#eef0e8] text-center">
+    <div class="p-4"><dt class="metric">{{ document_count }} وثيقة</dt><dd>في الأرشيف</dd></div>
+    <div class="p-4"><dt class="metric">{{ sources|length }} مصدر</dt><dd>في الكتالوج</dd></div>
+    <div class="p-4"><dt class="metric">{{ healthy_count }} نشط</dt><dd>آخر جمع</dd></div>
+  </dl>
+</section>
+
+<section class="max-w-7xl mx-auto px-4 py-8">
+  <form class="border-2 border-[#eef0e8] bg-[#111416] p-3 flex flex-col md:flex-row gap-3" hx-get="/search" hx-target="#results" hx-indicator="#searching">
+    <label class="sr-only" for="q">عبارة البحث</label>
+    <input id="q" name="q" required class="field grow text-lg" placeholder="مثال: قانون العمل، التضخم، حرية الصحافة...">
+    <select name="source_type" class="field" aria-label="نوع المصدر">
+      <option value="">كل المصادر</option><option value="official">رسمي</option><option value="legal">قانوني</option>
+      <option value="news">إخباري</option><option value="human_rights">حقوقي</option><option value="academic">أكاديمي</option><option value="statistics">إحصائي</option>
+    </select>
+    <select name="mode" class="field" aria-label="أسلوب البحث"><option value="hybrid">نصي + دلالي</option><option value="lexical">نصي دقيق</option></select>
+    <input name="date_from" type="date" class="field" aria-label="من تاريخ">
+    <input name="date_to" type="date" class="field" aria-label="إلى تاريخ">
+    <button class="action" type="submit">ابدأ البحث ←</button>
+  </form>
+  <p id="searching" class="htmx-indicator text-[#57e389] mt-3">جارٍ فحص الأرشيف…</p>
+  <div id="results" class="mt-8" aria-live="polite"></div>
+</section>
+
+{% if stories %}
+<section class="max-w-7xl mx-auto px-4 py-8">
+  <div class="section-head"><h2>قصص تحت المتابعة</h2><span>تجميع آلي — راجع المصادر</span></div>
+  <div class="divide-y divide-[#42484c] border-y border-[#42484c]">
+  {% for story in stories %}
+    <article class="py-5 grid md:grid-cols-[1fr_auto] gap-3">
+      <div><h3 class="font-black text-xl">{{ story.title }}</h3><p class="text-sm text-[#9ca3a8] mt-2">{{ story.document_count }} وثائق من {{ story.source_count }} مصادر</p></div>
+      <div class="flex flex-wrap gap-2">{% for item in story.documents[:3] %}<a class="source-chip" href="/documents/{{ item.document_id }}">{{ item.source_name }}</a>{% endfor %}</div>
+    </article>
+  {% endfor %}
+  </div>
+</section>
+{% endif %}
+{% endblock %}

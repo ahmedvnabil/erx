@@ -1,0 +1,13 @@
+<div class="section-head"><h2>نتائج البحث</h2><span>{{ results|length }} نتيجة لعبارة «{{ query }}»</span></div>
+{% if results %}
+<div class="divide-y divide-[#42484c] border-y border-[#42484c]">
+{% for item in results %}
+  <article class="py-6 grid md:grid-cols-[150px_1fr_auto] gap-4 items-start">
+    <div><span class="source-chip">{{ item.source_name }}</span><p class="text-xs text-[#9ca3a8] mt-2">{{ item.source_type }}</p></div>
+    <div><h3 class="text-xl font-black"><a href="/documents/{{ item.document_id }}">{{ item.title }}</a></h3><p class="result-excerpt text-[#b7bec2] mt-2">{{ item.excerpt }}</p><p class="text-xs text-[#9ca3a8] mt-3">{{ item.published_at.strftime('%Y-%m-%d') if item.published_at else 'تاريخ النشر غير متاح' }}{% if item.match_reasons is defined %} / مطابقة: {{ item.match_reasons|join(' + ') }}{% endif %}</p></div>
+    <a class="text-[#6ea8fe] text-sm font-bold" href="{{ item.canonical_url }}" target="_blank" rel="noopener">المصدر الأصلي ↗</a>
+  </article>
+{% endfor %}
+</div>
+<div class="mt-5 flex flex-wrap gap-2"><span class="text-sm ml-2">تصدير:</span>{% for format in ['ris','bibtex','csv','jsonl'] %}<a class="export-link" href="/export?q={{ query|urlencode }}&format={{ format }}">{{ format|upper }}</a>{% endfor %}</div>
+{% else %}<div class="empty">لا توجد نتائج مطابقة الآن. جرّب كلمات أقل أو نطاقًا زمنيًا أوسع.</div>{% endif %}

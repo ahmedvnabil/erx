@@ -1,0 +1,9 @@
+[Unit]
+Description=Collect and index Egypt Research sources
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/egypt-research-mcp
+ExecStart=/usr/bin/docker compose run --rm egypt-research /app/deploy/collect-and-index.sh

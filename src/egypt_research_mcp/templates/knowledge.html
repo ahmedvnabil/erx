@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}خريطة المعرفة — مرصد مصر البحثي{% endblock %}
+{% block content %}
+<section class="max-w-7xl mx-auto px-4 py-12">
+  <p class="label">KNOWLEDGE GRAPH / طبقة الاستدلال</p>
+  <h1 class="text-5xl font-black mt-3">خريطة المعرفة المصرية.</h1>
+  <p class="text-[#b7bec2] mt-4 max-w-3xl">كيانات وأحداث وادعاءات مستخرجة آليًا من الوثائق. كل عنصر يعود إلى الأصل، ولا يمثل حكمًا آليًا على الصحة.</p>
+  <div class="grid lg:grid-cols-3 gap-8 mt-12">
+    <section><div class="section-head"><h2>الكيانات</h2><span>{{ entities|length }}</span></div><div class="divide-y divide-[#42484c]">{% for item in entities %}<div class="py-4"><strong>{{ item.canonical_name }}</strong><p class="text-xs text-[#9ca3a8] mt-1">{{ item.entity_type }} / {{ item.document_count }} وثائق / {{ item.mentions }} ظهور</p></div>{% else %}<p class="empty mt-4">لم يبدأ الفهرس المعرفي.</p>{% endfor %}</div></section>
+    <section><div class="section-head"><h2>الأحداث الموثقة</h2><span>{{ events|length }}</span></div><div class="divide-y divide-[#42484c]">{% for item in events %}<article class="py-4"><strong>{{ item.title }}</strong><p class="text-xs text-[#9ca3a8] mt-1">{{ item.occurred_at.strftime('%Y-%m-%d') if item.occurred_at else 'بلا تاريخ' }}{% if item.location %} / {{ item.location }}{% endif %}</p></article>{% else %}<p class="empty mt-4">لا أحداث مفهرسة.</p>{% endfor %}</div></section>
+    <section><div class="section-head"><h2>الادعاءات المنسوبة</h2><span>{{ claims|length }}</span></div><div class="divide-y divide-[#42484c]">{% for item in claims %}<article class="py-4"><p>{{ item.claim_text }}</p><p class="text-xs text-[#f2c94c] mt-2">{{ item.review_status }} / {{ item.evidence|length }} أدلة</p></article>{% else %}<p class="empty mt-4">لا ادعاءات مستخرجة.</p>{% endfor %}</div></section>
+  </div>
+  <section class="mt-14"><div class="section-head"><h2>بحوث محفوظة</h2><span>{{ saved_searches|length }}</span></div><div class="grid md:grid-cols-2 gap-px bg-[#42484c] border border-[#42484c] mt-5">{% for item in saved_searches %}<a class="bg-[#0a0c0d] p-5" href="/?q={{ item.query|urlencode }}"><strong>{{ item.name }}</strong><p class="text-sm text-[#9ca3a8] mt-2">{{ item.query }}</p></a>{% else %}<p class="empty bg-[#0a0c0d]">لا توجد بحوث محفوظة.</p>{% endfor %}</div></section>
+</section>
+{% endblock %}
