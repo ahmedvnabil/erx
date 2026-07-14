@@ -1,8 +1,8 @@
 import { load } from "cheerio";
 import { hostAllowed, parseFeed, parseSitemap, readResponseBuffer } from "./collection.js";
 import { SOURCE_CONNECTORS, type SourceConnector } from "./connectors.js";
+import { SOURCE_USER_AGENT } from "./source-http.js";
 import type { SourceRecord } from "./types.js";
-import { VERSION } from "./version.js";
 
 export type EndpointAuditStatus = "healthy" | "blocked" | "rate_limited" | "invalid_redirect" | "invalid_content" | "http_error" | "unreachable";
 export type SourceAuditStatus = EndpointAuditStatus | "catalog_only";
@@ -27,8 +27,6 @@ export interface SourceAudit {
   endpoints: EndpointAudit[];
 }
 
-const USER_AGENT = `ERX-SourceAudit/${VERSION} (+https://erx-mcp.zad.tools)`;
-
 interface Fetched {
   status: number;
   body: string;
@@ -37,7 +35,7 @@ interface Fetched {
 
 async function fetchForAudit(url: string, fetcher: typeof fetch, init: RequestInit = {}): Promise<Fetched> {
   const headers = new Headers(init.headers);
-  headers.set("user-agent", USER_AGENT); headers.set("accept", "application/json,application/rss+xml,application/xml,text/xml,text/html");
+  headers.set("user-agent", SOURCE_USER_AGENT); headers.set("accept", "application/json,application/rss+xml,application/xml,text/xml,text/html");
   const response = await fetcher(url, {
     ...init, headers,
     redirect: "manual",

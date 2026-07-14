@@ -6,8 +6,8 @@ import { canonicalizeUrl, extractArticle, fetchArticle, hostAllowed, parseFeed, 
 import type { ApiConnector, HtmlConnector } from "./connectors.js";
 import { extractPdf, type PdfExtraction } from "./pdf.js";
 import type { ResearchStore } from "./store.js";
+import { SOURCE_USER_AGENT } from "./source-http.js";
 import { classifyDocument } from "./text.js";
-import { VERSION } from "./version.js";
 
 export interface IngestionReport {
   sourceSlug: string;
@@ -20,7 +20,6 @@ export interface IngestionReport {
   errorMessage: string | null;
 }
 
-const USER_AGENT = `ERX-EgyptResearch/${VERSION} (+research archive; contact=https://github.com/ahmedvnabil/erx)`;
 const emptyReport = (sourceSlug: string): IngestionReport => ({ sourceSlug, status: "empty", itemsFound: 0, itemsSaved: 0, itemsEnriched: 0, enrichmentFailures: 0, errorCode: null, errorMessage: null });
 const sleep = (seconds: number) => new Promise((resolve) => setTimeout(resolve, seconds * 1_000));
 
@@ -32,7 +31,7 @@ async function fetchResponse(url: string, allowedHost: string, maxBytes: number,
   const parsed = new URL(url);
   if (!hostAllowed(parsed.hostname, allowedHost)) throw new Error("URL is outside the configured source host");
   const headers = new Headers(init.headers);
-  headers.set("user-agent", USER_AGENT); headers.set("accept", "application/json,application/rss+xml,application/xml,text/xml,text/html,application/pdf");
+  headers.set("user-agent", SOURCE_USER_AGENT); headers.set("accept", "application/json,application/rss+xml,application/xml,text/xml,text/html,application/pdf");
   const response = await fetcher(url, { ...init, headers, redirect: "error", signal: AbortSignal.timeout(30_000) });
   if (!response.ok) {
     const code = response.status === 401 || response.status === 403 ? "source_access_blocked" : response.status === 429 ? "source_rate_limited" : "source_http_error";
