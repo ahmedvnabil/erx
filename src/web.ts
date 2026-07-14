@@ -23,7 +23,7 @@ export function createWebServer(store: ResearchStore, options: WebOptions = {}) 
   const publicBaseUrl = normalizePublicBaseUrl(process.env["EGYPT_RESEARCH_PUBLIC_URL"]);
   return createServer(async (request, response) => {
     const requestId = randomUUID();
-    securityHeaders(response, requestId);
+    securityHeaders(response, requestId, publicBaseUrl?.startsWith("https://") ?? false);
     const url = new URL(request.url ?? "/", `http://${request.headers.host ?? "127.0.0.1"}`);
     if (apiPaths.some((prefix) => url.pathname.startsWith(prefix)) && limited(request, limits, maximum)) {
       response.setHeader("retry-after", "60");
@@ -132,10 +132,11 @@ function api(store: ResearchStore, response: ServerResponse, url: URL): void {
   return json(response, 404, { error: { code: "not_found" } });
 }
 
-function securityHeaders(response: ServerResponse, requestId: string): void {
+function securityHeaders(response: ServerResponse, requestId: string, secureOrigin: boolean): void {
   response.setHeader("x-request-id", requestId); response.setHeader("x-content-type-options", "nosniff");
   response.setHeader("referrer-policy", "strict-origin-when-cross-origin"); response.setHeader("x-frame-options", "DENY");
   response.setHeader("permissions-policy", "camera=(), microphone=(), geolocation=()");
+  if (secureOrigin) response.setHeader("strict-transport-security", "max-age=31536000; includeSubDomains");
   response.setHeader("content-security-policy", "default-src 'self'; script-src 'self' https://unpkg.com https://cdnjs.cloudflare.com; style-src 'self' 'sha256-bsV5JivYxvGywDAZ22EZJKBFip65Ng9xoJVLbBg7bdo='; connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'");
 }
 

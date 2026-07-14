@@ -9,12 +9,17 @@ import { ResearchStore } from "../src/store.js";
 const open: Array<ReturnType<typeof createWebServer>> = [];
 afterEach(async () => { await Promise.all(open.splice(0).map((server) => new Promise<void>((resolve) => server.close(() => resolve())))); });
 
-async function fixture(rateLimitPerMinute = 120) {
+async function fixture(rateLimitPerMinute = 120, publicUrl?: string) {
   const store = new ResearchStore(join(mkdtempSync(join(tmpdir(), "egypt-web-")), "research.db"));
   store.initialize();
   store.upsertSource({ slug: "official-test", name: "المصدر الرسمي التجريبي", url: "https://example.org", sourceType: "official", ownershipType: "government", language: "ar" });
   store.upsertDocument({ externalId: "official-1", sourceSlug: "official-test", canonicalUrl: "https://example.org/decision/1", title: "قرار اقتصادي مصري موثق", excerpt: "تفاصيل موجزة للقرار", content: "النص الكامل للقرار الاقتصادي المصري الموثق.", publishedAt: "2026-07-14T00:00:00.000Z" });
+  const previousPublicUrl = process.env["EGYPT_RESEARCH_PUBLIC_URL"];
+  if (publicUrl) process.env["EGYPT_RESEARCH_PUBLIC_URL"] = publicUrl;
+  else delete process.env["EGYPT_RESEARCH_PUBLIC_URL"];
   const server = createWebServer(store, { includeMcp: false, rateLimitPerMinute });
+  if (previousPublicUrl === undefined) delete process.env["EGYPT_RESEARCH_PUBLIC_URL"];
+  else process.env["EGYPT_RESEARCH_PUBLIC_URL"] = previousPublicUrl;
   open.push(server);
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
   const address = server.address();
@@ -73,6 +78,13 @@ describe("web and REST", () => {
     expect(first.headers.get("x-request-id")).toBeTruthy();
     expect(blocked.status).toBe(429);
     expect(blocked.headers.get("retry-after")).toBeTruthy();
+  });
+
+  it("enables HSTS only for a configured HTTPS production origin", async () => {
+    const production = await fixture(120, "https://erx-mcp.zad.tools");
+    const local = await fixture();
+    expect((await fetch(`${production.base}/readyz`)).headers.get("strict-transport-security")).toBe("max-age=31536000; includeSubDomains");
+    expect((await fetch(`${local.base}/readyz`)).headers.get("strict-transport-security")).toBeNull();
   });
 
   it("serves document, catalog, observability, exports, and validation errors", async () => {
