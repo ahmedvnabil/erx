@@ -56,9 +56,11 @@ export class KnowledgeIndexer {
       const normalizedName = normalizeArabic(name);
       return [normalizedName, normalizedName.replace(/^ال/u, "")];
     }));
+    const knownPrefixes = [...known].sort((left, right) => right.length - left.length);
     for (const [canonicalName, entityType] of discoverEntities(text)) {
-      if (known.has(normalizeArabic(canonicalName))) continue;
-      const mentions = occurrences(normalized, normalizeArabic(canonicalName));
+      const normalizedName = normalizeArabic(canonicalName);
+      if (known.has(normalizedName) || knownPrefixes.some((prefix) => normalizedName.startsWith(`${prefix} `))) continue;
+      const mentions = occurrences(normalized, normalizedName);
       if (mentions < 1) continue;
       this.store.linkEntity(documentId, canonicalName, entityType, mentions, 0.7);
       entities.push(canonicalName);

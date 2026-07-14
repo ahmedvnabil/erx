@@ -66,6 +66,17 @@ describe("knowledge and retrieval", () => {
     store.close();
   });
 
+  it("does not create a second entity for a known organization prefix", () => {
+    const { store } = fixture();
+    const inserted = store.upsertDocument({
+      externalId: "entity-prefix:1", sourceSlug: "rights-source", canonicalUrl: "https://example.org/entities/1",
+      title: "جهاز مستقبل مصر للتنمية المستدامة يعلن مشروعا جديدا", content: "أعلن جهاز مستقبل مصر للتنمية المستدامة تفاصيل المشروع.", publishedAt: "2026-07-14T00:00:00.000Z"
+    });
+    new KnowledgeIndexer(store).indexDocument(inserted.documentId);
+    expect(store.listEntities({ documentId: inserted.documentId }).map((entity) => entity.canonicalName)).toEqual(["جهاز مستقبل مصر"]);
+    store.close();
+  });
+
   it("rejects weak semantic-only matches instead of inventing relevance", () => {
     const { store, documentId } = fixture();
     const weakVector = [0.15, Math.sqrt(1 - (0.15 ** 2))];
