@@ -42,6 +42,12 @@ function parseJson<T>(value: unknown, fallback: T): T {
   }
 }
 
+function relatedToken(left: string, right: string): boolean {
+  if (left === right) return true;
+  if (left.length < 4 || right.length < 4) return false;
+  return left.startsWith(right) || right.startsWith(left);
+}
+
 function validateHttpUrl(value: string, field: string): void {
   const parsed = new URL(value);
   if (parsed.protocol !== "http:" && parsed.protocol !== "https:") throw new Error(`${field} must use http or https`);
@@ -319,6 +325,34 @@ export class ResearchStore {
         id: asNumber(claim["id"]), claimText: asString(claim["claim_text"]), claimType: asString(claim["claim_type"]),
         firstSeenAt: asString(claim["first_seen_at"]), lastSeenAt: asString(claim["last_seen_at"]), reviewStatus: asString(claim["review_status"]),
         evidence: evidence.map((row) => ({ documentId: asNumber(row["document_id"]), title: asString(row["title"]), sourceName: asString(row["source_name"]), canonicalUrl: asString(row["canonical_url"]), stance: asString(row["stance"]), quote: asString(row["quote"]), confidence: asNumber(row["confidence"]) }))
+      };
+    });
+  }
+
+  compareClaims(query: string, limit = 20): Array<{ representative: string; claimCount: number; sourceCount: number; stances: string[]; claims: ClaimRecord[] }> {
+    const queryTokens = new Set(tokenizeQuery(query));
+    const matched = this.listClaims({ limit: 500 }).filter((claim) => {
+      const claimTokens = tokenizeQuery(claim.claimText);
+      return queryTokens.size === 0 || claimTokens.some((token) => [...queryTokens].some((queryToken) => relatedToken(token, queryToken)));
+    });
+    const clusters: Array<{ representative: string; tokens: Set<string>; claims: ClaimRecord[] }> = [];
+    for (const claim of matched) {
+      const tokens = new Set(tokenizeQuery(claim.claimText));
+      const cluster = clusters.find((candidate) => {
+        const shared = [...tokens].filter((token) => candidate.tokens.has(token)).length;
+        return shared >= 2 && jaccard(tokens, candidate.tokens) >= 0.35;
+      });
+      if (cluster) cluster.claims.push(claim);
+      else clusters.push({ representative: claim.claimText, tokens, claims: [claim] });
+    }
+    return clusters.slice(0, clamp(limit, 1, 100)).map((cluster) => {
+      const evidence = cluster.claims.flatMap((claim) => claim.evidence);
+      return {
+        representative: cluster.representative,
+        claimCount: cluster.claims.length,
+        sourceCount: new Set(evidence.map((item) => item.sourceName)).size,
+        stances: [...new Set(cluster.claims.map((claim) => claim.claimType))],
+        claims: cluster.claims
       };
     });
   }

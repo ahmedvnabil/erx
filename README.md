@@ -54,6 +54,7 @@ MCP: `https://erx-mcp.zad.tools/mcp`
 | `find_entities` | الكيانات المستخرجة وعدد الوثائق والظهور |
 | `list_events` | الأحداث المؤرخة ووثائقها الأصلية |
 | `trace_claim` | تتبع الادعاء إلى كل دليل ومصدر أورده |
+| `compare_claims` | تجميع الادعاءات المتشابهة ومقارنة مواقف المصادر |
 | `save_research_query` | حفظ استعلام متابعة محلي؛ معطلة في نقطة MCP العامة |
 
 يوفر السيرفر أيضًا موارد `egypt://sources` و`egypt://taxonomy` و`egypt://methodology`، بالإضافة إلى prompts للبحث المنظم والتحقق من الادعاءات.

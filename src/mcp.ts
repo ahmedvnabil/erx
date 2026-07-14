@@ -11,7 +11,7 @@ import { VERSION } from "./version.js";
 export const TOOL_NAMES = [
   "search_egypt", "get_document", "build_timeline", "compare_sources", "get_source_profile",
   "list_sources", "get_daily_brief", "list_stories", "export_references", "hybrid_search",
-  "research_dossier", "find_entities", "list_events", "trace_claim", "save_research_query"
+  "research_dossier", "find_entities", "list_events", "trace_claim", "compare_claims", "save_research_query"
 ] as const;
 
 export const METHODOLOGY = {
@@ -169,6 +169,11 @@ export function createMcpServer(store: ResearchStore, options: McpOptions = {}):
   server.registerTool("trace_claim", { description: "تتبع ادعاء واحد إلى الأدلة والمصادر التي أوردته.", inputSchema: { claim_id: z.number().int().positive() }, annotations: readOnly }, ({ claim_id }) => {
     const claim = store.listClaims({ limit: 500 }).find((item) => item.id === claim_id);
     return toolResult(claim ? { ok: true, claim } : { ok: false, error: { code: "claim_not_found" } });
+  });
+
+  server.registerTool("compare_claims", { description: "تجميع الادعاءات المتشابهة ومقارنة أنواع المواقف والأدلة التي أوردتها المصادر.", inputSchema: { query: z.string().min(1), limit: z.number().int().min(1).max(100).default(20) }, annotations: readOnly }, ({ query, limit }) => {
+    const clusters = store.compareClaims(query, limit);
+    return toolResult({ query, count: clusters.length, clusters });
   });
 
   server.registerTool("save_research_query", { description: "حفظ استعلام بحثي محلي لإعادة تشغيله ومتابعته لاحقًا. الكتابة معطلة في نقطة MCP العامة.", inputSchema: { name: z.string().min(2).max(200), query: z.string().min(2).max(1000) }, annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false } }, ({ name, query }) => {

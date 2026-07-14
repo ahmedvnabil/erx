@@ -11,7 +11,7 @@ import { KnowledgeIndexer } from "../src/knowledge.js";
 import { ResearchStore } from "../src/store.js";
 
 describe("MCP contract", () => {
-  it("publishes the stable 15-tool API", async () => {
+  it("publishes the stable tool API", async () => {
     const store = new ResearchStore(join(mkdtempSync(join(tmpdir(), "egypt-mcp-tools-")), "research.db"));
     store.initialize();
     bootstrapCatalog(store);
@@ -49,7 +49,7 @@ describe("MCP contract", () => {
       ["export_references", { query: "قرار اقتصادي", format: "ris" }], ["hybrid_search", { query: "قرار اقتصادي", source_types: ["official"], date_from: "2026-01-01" }],
       ["research_dossier", { query: "قرار اقتصادي", source_types: ["official"], date_from: "2026-01-01" }],
       ["find_entities", { document_id: inserted.documentId }], ["list_events", { document_id: inserted.documentId }],
-      ["trace_claim", { claim_id: store.listClaims()[0]!.id }], ["save_research_query", { name: "اقتصاد مصر", query: "قرار اقتصادي" }]
+      ["trace_claim", { claim_id: store.listClaims()[0]!.id }], ["compare_claims", { query: "قرار اقتصادي" }], ["save_research_query", { name: "اقتصاد مصر", query: "قرار اقتصادي" }]
     ];
     for (const [name, arguments_] of calls) expect((await client.callTool({ name, arguments: arguments_ })).isError).not.toBe(true);
     const dossier = await client.callTool({ name: "research_dossier", arguments: { query: "قرار اقتصادي" } });
@@ -61,6 +61,8 @@ describe("MCP contract", () => {
       claims: expect.any(Array),
       entities: expect.any(Array)
     }));
+    const comparedClaims = await client.callTool({ name: "compare_claims", arguments: { query: "قرار اقتصادي" } });
+    expect(comparedClaims.structuredContent).toEqual(expect.objectContaining({ count: 1, clusters: expect.any(Array) }));
     const sourcesResource = (await client.readResource({ uri: "egypt://sources" })).contents[0];
     const sourceResource = (await client.readResource({ uri: "egypt://source/official-test" })).contents[0];
     expect(sourcesResource && "text" in sourcesResource ? sourcesResource.text : "").toContain("official-test");

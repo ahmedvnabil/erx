@@ -15,7 +15,7 @@ describe("Streamable HTTP", () => {
     const address = http.address(); if (!address || typeof address === "string") throw new Error("missing address");
     const client = new Client({ name: "http-test", version: "1.0.0" });
     await client.connect(new StreamableHTTPClientTransport(new URL(`http://127.0.0.1:${address.port}/mcp`)) as unknown as Transport);
-    expect((await client.listTools()).tools).toHaveLength(15);
+    expect((await client.listTools()).tools).toHaveLength(16);
     await client.close(); await new Promise<void>((resolve) => http.close(() => resolve())); store.close();
   });
 
