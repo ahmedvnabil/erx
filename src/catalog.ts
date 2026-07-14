@@ -59,12 +59,20 @@ const seeds: Seed[] = [
   ["egypt-independent", "Egypt Independent", "https://www.egyptindependent.com", "news", "private_media", "en", "https://www.egyptindependent.com/feed/"]
 ];
 
-export const INITIAL_SOURCES: SourceInput[] = seeds.map(([slug, name, url, sourceType, ownershipType, language = "ar", feedUrl, sitemapUrl]) => ({
+export const RETIRED_SOURCE_SLUGS = new Set([
+  "amnesty-egypt", "bue-scholar", "daily-news-egypt", "egypt-independent", "egyptian-streets", "hrw-egypt", "icnl-egypt",
+  "msa-repository", "central-bank-egypt", "ntra-laws", "cairo24", "eipr", "almasryalyoum", "egyptian-public-prosecution",
+  "alamiria", "fra-egypt", "goeic-laws", "ahram-gate", "egyptera", "eeaa-laws", "afte", "masrawy",
+  "egyptian-customs-legislations", "national-planning-institute", "eda-laws", "mped-sdds", "ministry-of-justice-egypt", "ministry-of-finance-egypt"
+]);
+
+export const INITIAL_SOURCES: SourceInput[] = seeds.map(([slug, name, url, sourceType, ownershipType, language = "ar", feedUrl, sitemapUrl]): SourceInput => ({
   slug, name, url, sourceType, ownershipType, language, ...(feedUrl ? { feedUrl } : {}), ...(sitemapUrl ? { sitemapUrl } : {}),
   ...(SOURCE_CONNECTORS[slug] ? { collectionMethod: feedUrl || sitemapUrl ? "hybrid" : SOURCE_CONNECTORS[slug].kind } : {}), active: true
-}));
+})).filter((source) => !RETIRED_SOURCE_SLUGS.has(source.slug));
 
 export function bootstrapCatalog(store: ResearchStore): number {
   for (const source of INITIAL_SOURCES) store.upsertSource(source);
+  store.pruneSources(new Set(INITIAL_SOURCES.map((source) => source.slug)));
   return INITIAL_SOURCES.length;
 }

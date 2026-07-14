@@ -490,6 +490,28 @@ export class ResearchStore {
     return asNumber(row["count"]);
   }
 
+  pruneSources(allowedSlugs: Set<string>): { removed: number; retiredWithDocuments: number } {
+    let removed = 0;
+    let retiredWithDocuments = 0;
+    const sources = this.db.prepare("SELECT id, slug, (SELECT COUNT(*) FROM documents WHERE source_id=sources.id) AS document_count FROM sources").all() as Row[];
+    for (const source of sources) {
+      const slug = asString(source["slug"]);
+      if (allowedSlugs.has(slug)) continue;
+      const sourceId = asNumber(source["id"]);
+      if (asNumber(source["document_count"]) > 0) {
+        this.db.prepare("UPDATE sources SET active=0, health_status='retired', updated_at=? WHERE id=?").run(now(), sourceId);
+        retiredWithDocuments += 1;
+        continue;
+      }
+      this.transaction(() => {
+        this.db.prepare("DELETE FROM crawl_runs WHERE source_id=?").run(sourceId);
+        this.db.prepare("DELETE FROM sources WHERE id=?").run(sourceId);
+      });
+      removed += 1;
+    }
+    return { removed, retiredWithDocuments };
+  }
+
   resetDocumentKnowledge(documentId: number): void {
     this.transaction(() => {
       this.db.prepare("DELETE FROM document_entities WHERE document_id=?").run(documentId);
