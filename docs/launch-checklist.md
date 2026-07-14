@@ -18,8 +18,8 @@
 - [x] ربط `erx-mcp.zad.tools` بالخادم.
 - [x] إعداد TLS و`EGYPT_RESEARCH_PUBLIC_URL` في الإنتاج.
 - [x] تشغيل أول جمع وفهرسة على نسخة الإنتاج.
-- [ ] نشر tag `v0.5.0` بعد نجاح staging.
-- [ ] التأكد من ظهور الحزمة على npm ثم MCP Registry.
+- [x] نشر tag `v0.5.0` بعد نجاح staging.
+- [x] التأكد من ظهور الحزمة على npm ثم MCP Registry.
 - [ ] إرسال GitHub URL إلى Glama وPulseMCP.
 
 ## قرار الإطلاق
