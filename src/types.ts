@@ -20,7 +20,7 @@ export interface SourceInput {
   language: Language;
   feedUrl?: string | null;
   sitemapUrl?: string | null;
-  collectionMethod?: "catalog" | "rss" | "sitemap" | "hybrid";
+  collectionMethod?: "catalog" | "rss" | "sitemap" | "html" | "api" | "hybrid";
   crawlDelaySeconds?: number;
   contentLicense?: string;
   robotsPolicy?: "respect" | "allowlist_only";

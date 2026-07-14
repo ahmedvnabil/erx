@@ -42,4 +42,28 @@ describe("source endpoint audit", () => {
     const report = await auditSource(source(), fetcher);
     expect(report).toEqual(expect.objectContaining({ status: "catalog_only", websiteType: "custom", homepageReachable: true, endpoints: [] }));
   });
+
+  it("audits configured HTML listings by validating article paths", async () => {
+    const fetcher = (async (input: string | URL | Request) => {
+      const url = String(input);
+      if (url.endsWith("/news")) return new Response(`<a href="/news/12">خبر</a><a href="/about">عن الموقع</a>`, { headers: { "content-type": "text/html" } });
+      return new Response("<html><body>custom</body></html>", { headers: { "content-type": "text/html" } });
+    }) as typeof fetch;
+    const report = await auditSource(source({ slug: "cabinet-egypt", url: "https://www.cabinet.gov.eg", collectionMethod: "html" }), fetcher, {
+      kind: "html", listingUrl: "https://www.cabinet.gov.eg/news", articlePathPattern: "^/news/\\d+$"
+    });
+    expect(report.status).toBe("healthy");
+    expect(report.endpoints).toEqual([expect.objectContaining({ kind: "html", status: "healthy", items: 1 })]);
+  });
+
+  it("audits configured APIs by validating non-empty data arrays", async () => {
+    const fetcher = (async (input: string | URL | Request) => String(input).includes("/api/")
+      ? new Response(JSON.stringify({ data: [{ id: 1 }] }), { headers: { "content-type": "application/json" } })
+      : new Response("<html><body>custom</body></html>", { headers: { "content-type": "text/html" } })) as typeof fetch;
+    const report = await auditSource(source({ slug: "capmas", url: "https://www.capmas.gov.eg", collectionMethod: "api" }), fetcher, {
+      kind: "api", endpointUrl: "https://www.capmas.gov.eg:8080/api/news", adapter: "capmas_news", canonicalUrlBase: "https://www.capmas.gov.eg/news"
+    });
+    expect(report.status).toBe("healthy");
+    expect(report.endpoints).toEqual([expect.objectContaining({ kind: "api", status: "healthy", items: 1 })]);
+  });
 });

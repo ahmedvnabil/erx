@@ -30,6 +30,19 @@ describe("collection boundaries", () => {
     expect(article.content).not.toContain("الرئيسية الأخبار");
   });
 
+  it("extracts articles with source-specific selectors", () => {
+    const article = extractArticle(`<html><body><h1 class="headline">حكم دستوري مهم</h1><div class="legal-body"><p>${"نص الحكم القانوني ".repeat(8)}</p></div></body></html>`, "https://example.org/ruling/1", { titleSelector: ".headline", contentSelector: ".legal-body" });
+    expect(article.title).toBe("حكم دستوري مهم");
+    expect(article.content).toContain("نص الحكم القانوني");
+  });
+
+  it("does not lose configured content inside malformed site chrome", () => {
+    const html = `<html><body><header>رأس الصفحة<div><h1>خبر برلماني</h1><div class="story"><p>${"تفاصيل الجلسة البرلمانية ".repeat(8)}</p></div></div></body></html>`;
+    const article = extractArticle(html, "https://example.org/news/1", { titleSelector: "h1", contentSelector: ".story" });
+    expect(article.title).toBe("خبر برلماني");
+    expect(article.content).toContain("تفاصيل الجلسة البرلمانية");
+  });
+
   it("stops reading responses that exceed the byte limit without a content-length header", async () => {
     await expect(readResponseBuffer(new Response("oversized"), 4)).rejects.toThrow("Response exceeds size limit");
   });

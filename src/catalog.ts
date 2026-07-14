@@ -1,4 +1,5 @@
 import type { ResearchStore } from "./store.js";
+import { SOURCE_CONNECTORS } from "./connectors.js";
 import type { Language, SourceInput, SourceType } from "./types.js";
 
 type Seed = [slug: string, name: string, url: string, sourceType: SourceType, ownershipType: string, language?: Language, feedUrl?: string | undefined, sitemapUrl?: string];
@@ -40,7 +41,8 @@ const seeds: Seed[] = [
 ];
 
 export const INITIAL_SOURCES: SourceInput[] = seeds.map(([slug, name, url, sourceType, ownershipType, language = "ar", feedUrl, sitemapUrl]) => ({
-  slug, name, url, sourceType, ownershipType, language, ...(feedUrl ? { feedUrl } : {}), ...(sitemapUrl ? { sitemapUrl } : {}), active: true
+  slug, name, url, sourceType, ownershipType, language, ...(feedUrl ? { feedUrl } : {}), ...(sitemapUrl ? { sitemapUrl } : {}),
+  ...(SOURCE_CONNECTORS[slug] ? { collectionMethod: SOURCE_CONNECTORS[slug].kind } : {}), active: true
 }));
 
 export function bootstrapCatalog(store: ResearchStore): number {

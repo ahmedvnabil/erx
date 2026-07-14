@@ -2,7 +2,8 @@
 import { createHash } from "node:crypto";
 import { createBackup, restoreBackup, verifyBackup } from "./backup.js";
 import { bootstrapCatalog } from "./catalog.js";
-import { FeedIngestor, SitemapIngestor } from "./ingestion.js";
+import { SOURCE_CONNECTORS } from "./connectors.js";
+import { ApiIngestor, FeedIngestor, HtmlIngestor, SitemapIngestor } from "./ingestion.js";
 import { KnowledgeIndexer } from "./knowledge.js";
 import { createMcpServer } from "./mcp.js";
 import { GeminiEmbeddingProvider, LocalEmbeddingProvider } from "./retrieval.js";
@@ -65,13 +66,26 @@ async function main(argv = process.argv.slice(2)): Promise<number> {
   if (args.command === "ingest") {
     bootstrapCatalog(store);
     const channel = value(args, "channel", "auto"); const selected = new Set(args.values.get("source") ?? []);
-    const sources = store.listSources().filter((source) => source.active && (!selected.size || selected.has(source.slug)) && (channel === "rss" ? source.feedUrl : channel === "sitemap" ? source.sitemapUrl : source.feedUrl || source.sitemapUrl));
+    if (!["auto", "rss", "sitemap", "html", "api"].includes(channel)) { output({ error: "unsupported_channel", channel }); store.close(); return 2; }
+    const configuredForChannel = (source: ReturnType<typeof store.listSources>[number]): boolean => {
+      const connector = SOURCE_CONNECTORS[source.slug];
+      if (channel === "rss") return Boolean(source.feedUrl);
+      if (channel === "sitemap") return Boolean(source.sitemapUrl);
+      if (channel === "html") return connector?.kind === "html";
+      if (channel === "api") return connector?.kind === "api";
+      return Boolean(source.feedUrl || source.sitemapUrl || connector);
+    };
+    const sources = store.listSources().filter((source) => source.active && (!selected.size || selected.has(source.slug)) && configuredForChannel(source));
     const known = new Set(sources.map((source) => source.slug)); const missing = [...selected].filter((slug) => !known.has(slug));
     if (missing.length) { output({ error: "unknown_or_unconfigured_source", sources: missing.sort() }); store.close(); return 2; }
-    const feed = new FeedIngestor(store, { fullText: args.flags.has("full-text") }); const sitemap = new SitemapIngestor(store); const reports = [];
+    const feed = new FeedIngestor(store, { fullText: args.flags.has("full-text") }); const sitemap = new SitemapIngestor(store);
+    const html = new HtmlIngestor(store); const api = new ApiIngestor(store); const reports = [];
     for (const source of sources) {
+      const connector = SOURCE_CONNECTORS[source.slug];
       if ((channel === "auto" || channel === "rss") && source.feedUrl) reports.push(await feed.ingestSource(source.slug));
       if ((channel === "auto" || channel === "sitemap") && source.sitemapUrl) reports.push(await sitemap.ingestSource(source.slug, number(args, "max-urls", 100)));
+      if ((channel === "auto" || channel === "html") && connector?.kind === "html") reports.push(await html.ingestSource(source.slug, connector, number(args, "html-max-urls", 20)));
+      if ((channel === "auto" || channel === "api") && connector?.kind === "api") reports.push(await api.ingestSource(source.slug, connector));
     }
     output(reports); store.close(); return reports.some((report) => report.status === "failed") ? 1 : 0;
   }

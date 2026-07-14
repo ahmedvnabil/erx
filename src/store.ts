@@ -477,7 +477,7 @@ export class ResearchStore {
     return {
       slug: asString(row["slug"]), name: asString(row["name"]), url: asString(row["url"]), sourceType: asString(row["source_type"]) as SourceType,
       ownershipType: asString(row["ownership_type"]), language: asString(row["language"]) as "ar" | "en" | "mixed",
-      feedUrl: asNullableString(row["feed_url"]), sitemapUrl: asNullableString(row["sitemap_url"]), collectionMethod: asString(row["collection_method"]) as "catalog" | "rss" | "sitemap" | "hybrid",
+      feedUrl: asNullableString(row["feed_url"]), sitemapUrl: asNullableString(row["sitemap_url"]), collectionMethod: asString(row["collection_method"]) as "catalog" | "rss" | "sitemap" | "html" | "api" | "hybrid",
       crawlDelaySeconds: asNumber(row["crawl_delay_seconds"]), contentLicense: asString(row["content_license"]), robotsPolicy: asString(row["robots_policy"]) as "respect" | "allowlist_only",
       lastSuccessAt: asNullableString(row["last_success_at"]), lastErrorAt: asNullableString(row["last_error_at"]), consecutiveFailures: asNumber(row["consecutive_failures"]),
       active: Boolean(row["active"]), healthStatus: asString(row["health_status"]), lastCrawledAt: asNullableString(row["last_crawled_at"]), documentCount: asNumber(row["document_count"])

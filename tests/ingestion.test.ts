@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-import { FeedIngestor, SitemapIngestor } from "../src/ingestion.js";
+import { ApiIngestor, FeedIngestor, HtmlIngestor, SitemapIngestor } from "../src/ingestion.js";
 import { ResearchStore } from "../src/store.js";
 
 describe("SitemapIngestor", () => {
@@ -54,6 +54,32 @@ describe("SitemapIngestor", () => {
     const report = await new FeedIngestor(store, { fetcher }).ingestSource("safe-source");
     expect(report).toEqual(expect.objectContaining({ status: "success", itemsFound: 1, itemsSaved: 1 }));
     expect(store.search("رابط خارجي")).toHaveLength(0);
+    store.close();
+  });
+
+  it("discovers and archives configured HTML article links while respecting robots", async () => {
+    const store = new ResearchStore(join(mkdtempSync(join(tmpdir(), "egypt-html-")), "research.db")); store.initialize();
+    store.upsertSource({ slug: "html-source", name: "مصدر HTML", url: "https://example.org", sourceType: "official", ownershipType: "government", language: "ar", collectionMethod: "html" });
+    const responses: Record<string, Response> = {
+      "/robots.txt": new Response("User-agent: *\nDisallow: /news/2"),
+      "/news": new Response(`<a href="/news/1">one</a><a href="/news/2">blocked</a><a href="https://outside.invalid/news/3">outside</a>`, { headers: { "content-type": "text/html" } }),
+      "/news/1": new Response(`<h1 class="headline">قرار حكومي موثق</h1><div class="story"><p>${"تفاصيل القرار الحكومي ".repeat(10)}</p></div>`, { headers: { "content-type": "text/html" } })
+    };
+    const fetcher = (async (input: string | URL | Request) => responses[new URL(input instanceof Request ? input.url : input).pathname] ?? new Response("missing", { status: 404 })) as typeof fetch;
+    const report = await new HtmlIngestor(store, { fetcher, sleeper: async () => {} }).ingestSource("html-source", { kind: "html", listingUrl: "https://example.org/news", articlePathPattern: "^/news/\\d+$", titleSelector: ".headline", contentSelector: ".story" }, 10);
+    expect(report).toEqual(expect.objectContaining({ status: "success", itemsFound: 1, itemsSaved: 1 }));
+    expect(store.search("قرار حكومي")).toHaveLength(1);
+    store.close();
+  });
+
+  it("normalizes official JSON API records", async () => {
+    const store = new ResearchStore(join(mkdtempSync(join(tmpdir(), "egypt-api-")), "research.db")); store.initialize();
+    store.upsertSource({ slug: "api-source", name: "مصدر API", url: "https://example.org", sourceType: "statistics", ownershipType: "government", language: "ar", collectionMethod: "api" });
+    const payload = { data: [{ id: 42, title: "التضخم السنوي", brief: "بيان إحصائي", content: `<p>${"تفاصيل الرقم القياسي ".repeat(8)}</p>`, publishDate: "2026-07-13T00:00:00" }] };
+    const fetcher = (async () => new Response(JSON.stringify(payload), { headers: { "content-type": "application/json" } })) as typeof fetch;
+    const report = await new ApiIngestor(store, { fetcher }).ingestSource("api-source", { kind: "api", endpointUrl: "https://example.org:8080/api/news", adapter: "capmas_news", canonicalUrlBase: "https://example.org/media/news" });
+    expect(report).toEqual(expect.objectContaining({ status: "success", itemsFound: 1, itemsSaved: 1 }));
+    expect(store.search("التضخم")[0]).toEqual(expect.objectContaining({ publishedAt: "2026-07-13T00:00:00.000Z", documentType: "statistical_release" }));
     store.close();
   });
 });

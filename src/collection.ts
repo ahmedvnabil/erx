@@ -128,12 +128,13 @@ export function robotsAllows(robots: string, targetUrl: string, userAgent = "Egy
   return matching[0]?.allow ?? true;
 }
 
-export function extractArticle(html: string, canonicalUrl: string): ExtractedArticle {
+export function extractArticle(html: string, canonicalUrl: string, selectors: { titleSelector?: string; contentSelector?: string } = {}): ExtractedArticle {
   const $ = load(html);
-  $("script,style,noscript,svg,nav,header,footer,aside,form").remove();
-  const main = $("article").first().length ? $("article").first() : $("main").first().length ? $("main").first() : $("[role=main]").first();
+  const configured = selectors.contentSelector ? $(selectors.contentSelector).first() : null;
+  const main = configured?.length ? configured : $("article").first().length ? $("article").first() : $("main").first().length ? $("main").first() : $("[role=main]").first();
   if (!main.length) return { title: "", excerpt: "", content: "", canonicalUrl };
-  const title = cleanText(main.find("h1").first().text() || $("h1").first().text() || $("title").text());
+  const title = cleanText((selectors.titleSelector ? $(selectors.titleSelector).first().text() : "") || main.find("h1").first().text() || $("h1").first().text() || $("title").text());
+  main.find("script,style,noscript,svg,nav,header,footer,aside,form").remove();
   const content = cleanText(main.find("p,li,h2,h3,blockquote").map((_, element) => $(element).text()).get().join("\n"));
   if (!title || content.length < 40) return { title: "", excerpt: "", content: "", canonicalUrl };
   const description = $("meta[name=description]").attr("content") ?? $("meta[property='og:description']").attr("content") ?? "";
