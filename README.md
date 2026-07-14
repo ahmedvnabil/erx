@@ -131,8 +131,8 @@ docker compose up -d
 
 ```bash
 npm run release:check
-git tag v0.7.0
-git push origin v0.7.0
+git tag v0.7.1
+git push origin v0.7.1
 ```
 
 راجع [قائمة الإطلاق](docs/launch-checklist.md) و[حزمة محتوى الإطلاق](docs/launch-content.md).

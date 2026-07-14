@@ -40,4 +40,19 @@ describe("knowledge and retrieval", () => {
     expect(cosineSimilarity([2, 0], [3, 0])).toBe(1);
     store.close();
   });
+
+  it("rejects weak semantic-only matches instead of inventing relevance", () => {
+    const { store, documentId } = fixture();
+    const weakVector = [0.15, Math.sqrt(1 - (0.15 ** 2))];
+    const provider = {
+      provider: "test",
+      model: "weak-match",
+      embed: () => weakVector,
+      embedQuery: () => [1, 0]
+    };
+    store.upsertEmbedding(documentId, provider.provider, provider.model, weakVector, "weak-match");
+
+    expect(new HybridRetriever(store, provider).search("zzzznonsensezzz", { limit: 10 })).toEqual([]);
+    store.close();
+  });
 });

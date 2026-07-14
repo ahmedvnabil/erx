@@ -4,7 +4,7 @@ import { dirname, resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
 import { MIGRATIONS, SCHEMA } from "./schema.js";
-import { headlineTokens, jaccard, normalizeArabic, tokenizeQuery } from "./text.js";
+import { expandArabicSearchToken, headlineTokens, jaccard, normalizeArabic, tokenizeQuery } from "./text.js";
 import type {
   ClaimRecord,
   DocumentInput,
@@ -242,7 +242,10 @@ export class ResearchStore {
     if (tokens.length > 0) {
       join = "JOIN documents_fts f ON f.document_id=d.id";
       conditions.push("documents_fts MATCH ?");
-      parameters.push(tokens.map((token) => `\"${token.replaceAll('"', '""')}\"`).join(" AND "));
+      parameters.push(tokens.map((token) => {
+        const variants = expandArabicSearchToken(token).map((variant) => `\"${variant.replaceAll('"', '""')}\"`);
+        return variants.length === 1 ? variants[0]! : `(${variants.join(" OR ")})`;
+      }).join(" AND "));
       rank = "bm25(documents_fts)";
     }
     if (options.sourceTypes?.length) {

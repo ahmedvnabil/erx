@@ -12,6 +12,8 @@ const conceptGroups = [
   ["انتخاب", "انتخابات", "اقتراع"]
 ] as const;
 
+const MIN_SEMANTIC_SIMILARITY = 0.2;
+
 export interface EmbeddingProvider {
   readonly provider: string;
   readonly model: string;
@@ -92,7 +94,7 @@ export class HybridRetriever {
     const queryVector = this.provider.embedQuery(query);
     const semantic = this.store.listEmbeddings(this.provider.provider, this.provider.model)
       .map(([documentId, vector]) => [documentId, cosineSimilarity(queryVector, vector)] as const)
-      .filter(([, score]) => score > 0.02)
+      .filter(([, score]) => score >= MIN_SEMANTIC_SIMILARITY)
       .sort((left, right) => right[1] - left[1])
       .slice(0, Math.min(100, limit * 5));
     const scores = new Map<number, number>();
@@ -102,7 +104,7 @@ export class HybridRetriever {
       (reasons.get(result.documentId) ?? reasons.set(result.documentId, new Set()).get(result.documentId))!.add("lexical");
     });
     semantic.forEach(([documentId, similarity], index) => {
-      scores.set(documentId, (scores.get(documentId) ?? 0) + (1 / (61 + index)) * Math.max(0.2, similarity));
+      scores.set(documentId, (scores.get(documentId) ?? 0) + (1 / (61 + index)) * similarity);
       (reasons.get(documentId) ?? reasons.set(documentId, new Set()).get(documentId))!.add("semantic");
     });
     return [...scores.entries()].sort((left, right) => right[1] - left[1]).slice(0, limit).flatMap(([documentId, score]) => {

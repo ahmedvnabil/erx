@@ -55,6 +55,26 @@ describe("ResearchStore", () => {
     store.close();
   });
 
+  it("matches Arabic definite articles and plural case variants", () => {
+    const store = new ResearchStore(join(mkdtempSync(join(tmpdir(), "egypt-arabic-search-")), "research.db"));
+    store.initialize();
+    store.upsertSource(source);
+    const inserted = store.upsertDocument({
+      externalId: "refugees-1",
+      sourceSlug: source.slug,
+      canonicalUrl: "https://example.com/refugees/1",
+      title: "منصة اللاجئين في مصر",
+      excerpt: "تقرير عن أوضاع اللاجئين",
+      content: "يتناول التقرير حقوق اللاجئين وطالبي اللجوء في مصر.",
+      publishedAt: "2026-07-14T10:00:00.000Z"
+    });
+
+    for (const query of ["لاجئين", "اللاجئون", "اللاجئين"]) {
+      expect(store.search(query).map((result) => result.documentId)).toEqual([inserted.documentId]);
+    }
+    store.close();
+  });
+
   it("reopens a seeded database readonly without changing its contract", () => {
     const database = join(mkdtempSync(join(tmpdir(), "egypt-reopen-")), "research.db");
     const writableStore = new ResearchStore(database);

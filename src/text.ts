@@ -52,6 +52,29 @@ export function tokenizeQuery(value: string): string[] {
   return [...new Set(tokens.filter((token) => token && !stopWords.has(token)))];
 }
 
+export function expandArabicSearchToken(value: string): string[] {
+  const token = normalizeArabic(value);
+  if (!token || !/[\u0600-\u06ff]/u.test(token)) return token ? [token] : [];
+
+  let articleForm = token;
+  if (/^[وفبك]ال/u.test(token) && token.length > 5) articleForm = token.slice(1);
+  else if (token.startsWith("لل") && token.length > 4) articleForm = token.slice(1);
+  const bare = articleForm.startsWith("ال") && articleForm.length > 4 ? articleForm.slice(2) : articleForm;
+  const bareForms = new Set([bare]);
+  if ((bare.endsWith("ون") || bare.endsWith("ين")) && bare.length > 4) {
+    const stem = bare.slice(0, -2);
+    bareForms.add(`${stem}ون`);
+    bareForms.add(`${stem}ين`);
+  }
+
+  const variants = new Set([token, articleForm]);
+  for (const form of bareForms) {
+    variants.add(form);
+    variants.add(`ال${form}`);
+  }
+  return [...variants];
+}
+
 export function classifyDocument(value: string): string[] {
   const normalized = normalizeArabic(value);
   return TOPICS.filter((topic) => topicKeywords[topic].some((keyword) => normalized.includes(normalizeArabic(keyword))));
