@@ -11,7 +11,7 @@ import { VERSION } from "./version.js";
 export const TOOL_NAMES = [
   "search_egypt", "get_document", "build_timeline", "compare_sources", "get_source_profile",
   "list_sources", "get_daily_brief", "list_stories", "export_references", "hybrid_search",
-  "find_entities", "list_events", "trace_claim", "save_research_query"
+  "research_dossier", "find_entities", "list_events", "trace_claim", "save_research_query"
 ] as const;
 
 export const METHODOLOGY = {
@@ -40,6 +40,40 @@ function toSnake(value: unknown): unknown {
 function toolResult(payload: Record<string, unknown>) {
   const wire = toSnake(payload) as Record<string, unknown>;
   return { content: [{ type: "text" as const, text: JSON.stringify(wire, null, 2) }], structuredContent: wire };
+}
+
+function buildResearchDossier(store: ResearchStore, query: string, results: ReturnType<ResearchStore["search"]>) {
+  const sourceTypes: Record<string, number> = {};
+  const entities = new Map<number, ReturnType<ResearchStore["listEntities"]>[number]>();
+  const claims = new Map<number, ReturnType<ResearchStore["listClaims"]>[number]>();
+  for (const result of results) {
+    sourceTypes[result.sourceType] = (sourceTypes[result.sourceType] ?? 0) + 1;
+    for (const entity of store.listEntities({ documentId: result.documentId, limit: 100 })) entities.set(entity.id, entity);
+    for (const claim of store.listClaims({ documentId: result.documentId, limit: 100 })) claims.set(claim.id, claim);
+  }
+  const dates = results.map((result) => result.eventAt ?? result.publishedAt ?? result.archivedAt).sort();
+  const timeline = results.map((result) => ({
+    documentId: result.documentId,
+    occurredAt: result.eventAt ?? result.publishedAt ?? result.archivedAt,
+    dateBasis: result.eventAt ? "event_at" : result.publishedAt ? "published_at" : "archived_at",
+    title: result.title,
+    sourceName: result.sourceName,
+    citation: result.citation
+  })).sort((left, right) => left.occurredAt.localeCompare(right.occurredAt));
+  return {
+    query,
+    coverage: {
+      documentCount: results.length,
+      sourceCount: new Set(results.map((result) => result.sourceSlug)).size,
+      sourceTypes,
+      firstDate: dates[0] ?? null,
+      lastDate: dates.at(-1) ?? null
+    },
+    results: results.map((result) => ({ ...result, excerpt: result.excerpt.slice(0, 800) })),
+    timeline,
+    entities: [...entities.values()].sort((left, right) => right.documentCount - left.documentCount),
+    claims: [...claims.values()].sort((left, right) => right.lastSeenAt.localeCompare(left.lastSeenAt))
+  };
 }
 
 const readOnly = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false } as const;
@@ -108,9 +142,18 @@ export function createMcpServer(store: ResearchStore, options: McpOptions = {}):
     return toolResult({ ok: true, format, count: results.length, content: exportResults(results, format as ExportFormat) });
   });
 
-  server.registerTool("hybrid_search", { description: "بحث هجين يجمع المطابقة النصية والدلالية مع تفسير الترتيب.", inputSchema: { query: z.string().min(1), limit: z.number().int().min(1).max(100).default(20) }, annotations: readOnly }, ({ query, limit }) => {
-    const results = new HybridRetriever(store).search(query, { limit });
+  server.registerTool("hybrid_search", { description: "بحث هجين يجمع المطابقة النصية والدلالية مع تفسير الترتيب وفلاتر النوع والفترة.", inputSchema: {
+    query: z.string().min(1), source_types: z.array(z.enum(SOURCE_TYPES)).optional(), date_from: z.string().optional(), date_to: z.string().optional(), limit: z.number().int().min(1).max(100).default(20)
+  }, annotations: readOnly }, ({ query, source_types, date_from, date_to, limit }) => {
+    const results = new HybridRetriever(store).search(query, { limit, ...(source_types ? { sourceTypes: source_types } : {}), ...(date_from ? { dateFrom: date_from } : {}), ...(date_to ? { dateTo: date_to } : {}) });
     return toolResult({ query, count: results.length, results });
+  });
+
+  server.registerTool("research_dossier", { description: "حزمة بحث موثقة تجمع البحث الهجين والنتائج والخط الزمني والكيانات والادعاءات وتنوع المصادر.", inputSchema: {
+    query: z.string().min(1), source_types: z.array(z.enum(SOURCE_TYPES)).optional(), date_from: z.string().optional(), date_to: z.string().optional(), limit: z.number().int().min(1).max(50).default(20)
+  }, annotations: readOnly }, ({ query, source_types, date_from, date_to, limit }) => {
+    const results = new HybridRetriever(store).search(query, { limit, ...(source_types ? { sourceTypes: source_types } : {}), ...(date_from ? { dateFrom: date_from } : {}), ...(date_to ? { dateTo: date_to } : {}) });
+    return toolResult(buildResearchDossier(store, query, results));
   });
 
   server.registerTool("find_entities", { description: "عرض الكيانات المستخرجة وأعداد ظهورها في الوثائق.", inputSchema: { document_id: z.number().int().positive().optional(), limit: z.number().int().min(1).max(500).default(100) }, annotations: readOnly }, ({ document_id, limit }) => {

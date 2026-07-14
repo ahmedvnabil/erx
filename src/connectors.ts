@@ -9,7 +9,7 @@ export interface HtmlConnector {
 export interface ApiConnector {
   kind: "api";
   endpointUrl: string;
-  adapter: "capmas_news" | "scc_rules" | "idsc_news";
+  adapter: "capmas_news" | "scc_rules" | "idsc_news" | "mof_posts" | "wordpress_posts" | "dspace_discover";
   canonicalUrlBase: string;
   method?: "GET" | "POST";
   requestBody?: Readonly<Record<string, unknown>>;
@@ -31,6 +31,12 @@ export const SOURCE_CONNECTORS: Readonly<Record<string, SourceConnector>> = {
   "masrawy": { kind: "html", listingUrl: "https://www.masrawy.com/", articlePathPattern: "^/[^/]+/[^/]+/details/\\d{4}/\\d{1,2}/\\d{1,2}/\\d+/.+$" },
   "youm7": { kind: "html", listingUrl: "https://www.youm7.com/", articlePathPattern: "^/story/\\d{4}/\\d{1,2}/\\d{1,2}/.+/\\d+$" },
   "shorouk-news": { kind: "html", listingUrl: "https://www.shorouknews.com/mobile/", articlePathPattern: "^/mobile/news/view\\.aspx$", titleSelector: "h1", contentSelector: ".content.borderLess" },
+  "fra-egypt": { kind: "api", endpointUrl: "https://fra.gov.eg/wp-json/wp/v2/posts?per_page=20&_fields=id,link,date_gmt,modified_gmt,title,excerpt,content", adapter: "wordpress_posts", canonicalUrlBase: "https://fra.gov.eg" },
+  "daily-news-egypt": { kind: "api", endpointUrl: "https://www.dailynewsegypt.com/wp-json/wp/v2/posts?per_page=20&_fields=id,link,date_gmt,modified_gmt,title,excerpt,content", adapter: "wordpress_posts", canonicalUrlBase: "https://www.dailynewsegypt.com" },
+  "egyptian-streets": { kind: "api", endpointUrl: "https://egyptianstreets.com/wp-json/wp/v2/posts/?per_page=20&_fields=id,link,date_gmt,modified_gmt,title,excerpt,content", adapter: "wordpress_posts", canonicalUrlBase: "https://egyptianstreets.com" },
+  "egypt-independent": { kind: "api", endpointUrl: "https://www.egyptindependent.com/wp-json/wp/v2/posts?per_page=20&_fields=id,link,date_gmt,modified_gmt,title,excerpt,content", adapter: "wordpress_posts", canonicalUrlBase: "https://www.egyptindependent.com" },
+  "national-planning-institute": { kind: "api", endpointUrl: "https://repository.inp.edu.eg/server/api/discover/search/objects?size=20", adapter: "dspace_discover", canonicalUrlBase: "https://repository.inp.edu.eg/handle" },
+  "msa-repository": { kind: "api", endpointUrl: "https://repository.msa.edu.eg/server/api/discover/search/objects?size=20", adapter: "dspace_discover", canonicalUrlBase: "https://repository.msa.edu.eg/handle" },
   "capmas": { kind: "api", endpointUrl: "https://www.capmas.gov.eg:8080/api/News/GetLatestNews", adapter: "capmas_news", canonicalUrlBase: "https://www.capmas.gov.eg/mediaLanding/news" },
   "idsc-egypt": { kind: "api", endpointUrl: "https://www.idsc.gov.eg/api/NewsAPI/GetAllNewsWithPagination", adapter: "idsc_news", canonicalUrlBase: "https://www.idsc.gov.eg/News/details", method: "POST", requestBody: { titleA: null, publishDateFrom: null, publishDateTo: null, ownerId: null, pageNumber: 1, pageSize: 20, translated: null } },
   "supreme-constitutional-court": { kind: "api", endpointUrl: "https://www.sccourt.gov.eg/DjangoPortal/api/RecentRules/get-recent-rules-last-add", adapter: "scc_rules", canonicalUrlBase: "https://www.sccourt.gov.eg/DjangoPortal/api/RecentRules/get-recent-rules-last-add?item=" }

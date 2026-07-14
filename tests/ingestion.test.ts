@@ -95,4 +95,37 @@ describe("SitemapIngestor", () => {
     expect(store.search("دعوة للباحثين")[0]).toEqual(expect.objectContaining({ canonicalUrl: "https://www.idsc.gov.eg/News/details/18785", documentType: "research_release" }));
     store.close();
   });
+
+  it("normalizes Ministry of Finance post arrays", async () => {
+    const store = new ResearchStore(join(mkdtempSync(join(tmpdir(), "egypt-mof-api-")), "research.db")); store.initialize();
+    store.upsertSource({ slug: "mof", name: "وزارة المالية", url: "https://mof.gov.eg", sourceType: "statistics", ownershipType: "government", language: "ar", collectionMethod: "api" });
+    const payload = [{ id: "abc123", title: "بيان مالي جديد", description: "ملخص البيان", content: { text: "تفاصيل البيان المالي ".repeat(8) }, publishedAt: "2026-07-13T08:00:00Z" }];
+    const fetcher = (async () => new Response(JSON.stringify(payload), { headers: { "content-type": "application/json" } })) as typeof fetch;
+    const report = await new ApiIngestor(store, { fetcher }).ingestSource("mof", { kind: "api", endpointUrl: "https://api.mof.gov.eg/api/posts", adapter: "mof_posts", canonicalUrlBase: "https://mof.gov.eg/posts" });
+    expect(report).toEqual(expect.objectContaining({ status: "success", itemsFound: 1, itemsSaved: 1 }));
+    expect(store.search("بيان مالي")[0]).toEqual(expect.objectContaining({ canonicalUrl: "https://mof.gov.eg/posts/abc123", documentType: "financial_release" }));
+    store.close();
+  });
+
+  it("normalizes WordPress REST posts", async () => {
+    const store = new ResearchStore(join(mkdtempSync(join(tmpdir(), "egypt-wp-api-")), "research.db")); store.initialize();
+    store.upsertSource({ slug: "wp", name: "مصدر ووردبريس", url: "https://example.org", sourceType: "news", ownershipType: "private", language: "ar", collectionMethod: "api" });
+    const payload = [{ id: 7, link: "https://example.org/news/7", date_gmt: "2026-07-13T08:00:00", title: { rendered: "خبر من REST" }, excerpt: { rendered: "<p>ملخص الخبر</p>" }, content: { rendered: `<p>${"تفاصيل خبر ووردبريس ".repeat(8)}</p>` } }];
+    const fetcher = (async () => new Response(JSON.stringify(payload), { headers: { "content-type": "application/json" } })) as typeof fetch;
+    const report = await new ApiIngestor(store, { fetcher }).ingestSource("wp", { kind: "api", endpointUrl: "https://example.org/wp-json/wp/v2/posts", adapter: "wordpress_posts", canonicalUrlBase: "https://example.org" });
+    expect(report).toEqual(expect.objectContaining({ status: "success", itemsFound: 1, itemsSaved: 1 }));
+    expect(store.search("REST")[0]).toEqual(expect.objectContaining({ canonicalUrl: "https://example.org/news/7", documentType: "article" }));
+    store.close();
+  });
+
+  it("normalizes DSpace discover search responses", async () => {
+    const store = new ResearchStore(join(mkdtempSync(join(tmpdir(), "egypt-dspace-api-")), "research.db")); store.initialize();
+    store.upsertSource({ slug: "dspace", name: "مستودع أكاديمي", url: "https://repo.example.org", sourceType: "academic", ownershipType: "university", language: "mixed", collectionMethod: "api" });
+    const payload = { _embedded: { searchResult: { _embedded: { objects: [{ _embedded: { indexableObject: { uuid: "u1", name: "دراسة اقتصادية", handle: "123456789/1", metadata: { "dc.description.abstract": [{ value: "ملخص الدراسة الاقتصادية ".repeat(8) }], "dc.contributor.author": [{ value: "باحث" }], "dc.date.issued": [{ value: "2024" }] } } } }] } } } };
+    const fetcher = (async () => new Response(JSON.stringify(payload), { headers: { "content-type": "application/json" } })) as typeof fetch;
+    const report = await new ApiIngestor(store, { fetcher }).ingestSource("dspace", { kind: "api", endpointUrl: "https://repo.example.org/server/api/discover/search/objects?size=20", adapter: "dspace_discover", canonicalUrlBase: "https://repo.example.org/handle" });
+    expect(report).toEqual(expect.objectContaining({ status: "success", itemsFound: 1, itemsSaved: 1 }));
+    expect(store.search("اقتصادية")[0]).toEqual(expect.objectContaining({ canonicalUrl: "https://repo.example.org/handle/123456789/1", documentType: "academic_record" }));
+    store.close();
+  });
 });

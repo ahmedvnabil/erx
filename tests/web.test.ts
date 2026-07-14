@@ -42,7 +42,7 @@ describe("web and REST", () => {
     ]);
     const landing = await home.text();
     expect(landing).toContain("كل معلومة لها مصدر");
-    expect(landing).toContain("14 أداة MCP");
+    expect(landing).toContain("15 أداة MCP");
     expect(landing).toContain('class="hero-visual"');
     expect(landing).toContain('alt="أرشيف بحثي يربط الوثائق بمصادرها"');
     expect(landing).toContain("npx -y egypt-research-mcp serve --transport stdio");

@@ -176,6 +176,14 @@ export class ApiIngestor {
   private normalize(rows: unknown[], connector: ApiConnector): ApiItem[] {
     const record = (value: unknown): Record<string, unknown> => value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
     const text = (value: unknown): string => typeof value === "string" || typeof value === "number" ? String(value).trim() : "";
+    const rendered = (value: unknown): string => {
+      const row = record(value);
+      return clean(row["rendered"] ?? value);
+    };
+    const metadata = (row: Record<string, unknown>, key: string): string => {
+      const values = record(row["metadata"])[key];
+      return Array.isArray(values) ? values.map((value) => text(record(value)["value"])).filter(Boolean).join("; ") : "";
+    };
     const date = (value: unknown): string | null => {
       const raw = text(value);
       const deterministic = raw && !/(?:Z|[+-]\d{2}:?\d{2})$/i.test(raw) ? `${raw}Z` : raw;
@@ -186,12 +194,41 @@ export class ApiIngestor {
     const url = (id: string): string => canonicalizeUrl(connector.canonicalUrlBase.endsWith("=") ? `${connector.canonicalUrlBase}${encodeURIComponent(id)}` : `${connector.canonicalUrlBase.replace(/\/$/, "")}/${encodeURIComponent(id)}`);
     if (connector.adapter === "capmas_news") return rows.map(record).map((row) => ({ id: text(row["id"]), canonicalUrl: url(text(row["id"])), title: text(row["title"]), excerpt: clean(row["brief"]), content: clean(row["content"]), publishedAt: date(row["publishDate"]), documentType: "statistical_release" })).filter((item) => item.id && item.title && item.content);
     if (connector.adapter === "idsc_news") return rows.map(record).map((row) => ({ id: text(row["id"]), canonicalUrl: url(text(row["id"])), title: text(row["titleA"]), excerpt: clean(row["contentA"]).slice(0, 500), content: clean(row["contentA"]), publishedAt: date(row["publishDate"]), documentType: "research_release" })).filter((item) => item.id && item.title && item.content);
+    if (connector.adapter === "mof_posts") return rows.map(record).map((row) => {
+      const content = record(row["content"]);
+      const body = clean(content["text"] ?? content["raw"] ?? row["description"]);
+      return { id: text(row["id"]), canonicalUrl: url(text(row["id"])), title: text(row["title"]), excerpt: clean(row["description"]).slice(0, 500), content: body, publishedAt: date(row["publishedAt"] ?? row["createdAt"]), documentType: "financial_release" };
+    }).filter((item) => item.id && item.title && item.content);
+    if (connector.adapter === "wordpress_posts") return rows.map(record).map((row) => {
+      const id = text(row["id"]);
+      const link = text(row["link"]);
+      const content = rendered(row["content"]);
+      return { id, canonicalUrl: link ? canonicalizeUrl(link) : url(id), title: rendered(row["title"]), excerpt: rendered(row["excerpt"]).slice(0, 500), content, publishedAt: date(row["date_gmt"] ?? row["modified_gmt"]), documentType: "article" };
+    }).filter((item) => item.id && item.title && item.content);
+    if (connector.adapter === "dspace_discover") return rows.map(record).map((row) => {
+      const item = record(row["_embedded"])["indexableObject"] ? record(record(row["_embedded"])["indexableObject"]) : row;
+      const id = text(item["uuid"] ?? item["id"] ?? item["handle"]);
+      const handle = text(item["handle"]);
+      const abstract = metadata(item, "dc.description.abstract");
+      const description = metadata(item, "dc.description");
+      const authors = metadata(item, "dc.contributor.author");
+      const subjects = metadata(item, "dc.subject");
+      const content = [abstract, description, authors ? `Authors: ${authors}` : "", subjects ? `Subjects: ${subjects}` : ""].filter(Boolean).join("\n");
+      return { id, canonicalUrl: handle ? canonicalizeUrl(`${connector.canonicalUrlBase.replace(/\/$/, "")}/${handle}`) : url(id), title: text(item["name"]), excerpt: (abstract || description || content).slice(0, 500), content, publishedAt: date(metadata(item, "dc.date.issued") || metadata(item, "dc.date.available")), documentType: "academic_record" };
+    }).filter((item) => item.id && item.title && item.content);
     return rows.map(record).map((row) => ({ id: text(row["id"]), canonicalUrl: url(text(row["id"])), title: text(row["rule_title"]), excerpt: clean(row["rule_text"]).slice(0, 500), content: clean(row["rule_text"]), publishedAt: date(row["rule_date"]), documentType: "court_ruling" })).filter((item) => item.id && item.title && item.content);
   }
 
   private rows(payload: unknown, connector: ApiConnector): unknown[] {
-    if (!payload || typeof payload !== "object" || Array.isArray(payload)) return [];
+    if (Array.isArray(payload)) return payload;
+    if (!payload || typeof payload !== "object") return [];
     const root = payload as Record<string, unknown>;
+    if (connector.adapter === "dspace_discover") {
+      const embedded = root["_embedded"] && typeof root["_embedded"] === "object" && !Array.isArray(root["_embedded"]) ? root["_embedded"] as Record<string, unknown> : {};
+      const searchResult = embedded["searchResult"] && typeof embedded["searchResult"] === "object" && !Array.isArray(embedded["searchResult"]) ? embedded["searchResult"] as Record<string, unknown> : {};
+      const searchEmbedded = searchResult["_embedded"] && typeof searchResult["_embedded"] === "object" && !Array.isArray(searchResult["_embedded"]) ? searchResult["_embedded"] as Record<string, unknown> : {};
+      return Array.isArray(searchEmbedded["objects"]) ? searchEmbedded["objects"] as unknown[] : [];
+    }
     if (connector.adapter !== "idsc_news") return Array.isArray(root["data"]) ? root["data"] : [];
     const result = root["result"];
     return result && typeof result === "object" && !Array.isArray(result) && Array.isArray((result as Record<string, unknown>)["items"])

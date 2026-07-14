@@ -33,7 +33,7 @@ interface Fetched {
   headers: Headers;
 }
 
-async function fetchForAudit(url: string, fetcher: typeof fetch, init: RequestInit = {}): Promise<Fetched> {
+async function fetchForAudit(url: string, fetcher: typeof fetch, init: RequestInit = {}, maxResponseBytes = 10_000_000): Promise<Fetched> {
   const headers = new Headers(init.headers);
   headers.set("user-agent", SOURCE_USER_AGENT); headers.set("accept", "application/json,application/rss+xml,application/xml,text/xml,text/html");
   const response = await fetcher(url, {
@@ -41,7 +41,7 @@ async function fetchForAudit(url: string, fetcher: typeof fetch, init: RequestIn
     redirect: "manual",
     signal: AbortSignal.timeout(20_000)
   });
-  const body = response.status >= 300 && response.status < 400 ? "" : (await readResponseBuffer(response, 10_000_000)).toString("utf8");
+  const body = response.status >= 300 && response.status < 400 ? "" : (await readResponseBuffer(response, maxResponseBytes)).toString("utf8");
   return { status: response.status, body, headers: response.headers };
 }
 
@@ -98,9 +98,13 @@ async function auditConnector(connector: SourceConnector, sourceHost: string, fe
       const payload = JSON.parse(response.body) as unknown;
       const root = payload && typeof payload === "object" && !Array.isArray(payload) ? payload as Record<string, unknown> : {};
       const result = root["result"];
+      const embedded = root["_embedded"] && typeof root["_embedded"] === "object" && !Array.isArray(root["_embedded"]) ? root["_embedded"] as Record<string, unknown> : {};
+      const searchResult = embedded["searchResult"] && typeof embedded["searchResult"] === "object" && !Array.isArray(embedded["searchResult"]) ? embedded["searchResult"] as Record<string, unknown> : {};
+      const searchEmbedded = searchResult["_embedded"] && typeof searchResult["_embedded"] === "object" && !Array.isArray(searchResult["_embedded"]) ? searchResult["_embedded"] as Record<string, unknown> : {};
       const rows = connector.adapter === "idsc_news"
         ? result && typeof result === "object" && !Array.isArray(result) && Array.isArray((result as Record<string, unknown>)["items"]) ? (result as Record<string, unknown>)["items"] as unknown[] : []
-        : Array.isArray(payload) ? payload : Array.isArray(root["data"]) ? root["data"] as unknown[] : [];
+        : connector.adapter === "dspace_discover" ? Array.isArray(searchEmbedded["objects"]) ? searchEmbedded["objects"] as unknown[] : []
+          : Array.isArray(payload) ? payload : Array.isArray(root["data"]) ? root["data"] as unknown[] : [];
       items = rows.length;
     }
     return items > 0
