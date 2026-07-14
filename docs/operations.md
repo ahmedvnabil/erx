@@ -28,6 +28,13 @@ SQLite online backup before collection, then refreshes the local knowledge index
 The included systemd timer is an example for a Linux host and must use the actual
 checkout path.
 
+Run `node dist/cli.js audit-sources --concurrency 10` from the deployed container
+to verify the RSS and Sitemap payloads from the production IP. The audit also
+checks catalogue-only homepages and identifies common WordPress, Drupal, ASP.NET,
+Digital Commons, SPA, and custom site types. It exits non-zero when a collection
+endpoint is blocked, rate-limited, redirected incompatibly, malformed, or
+unreachable.
+
 ## Recovery
 
 ```bash

@@ -45,4 +45,15 @@ describe("SitemapIngestor", () => {
     expect(store.listCrawlRuns("blocked-source", 1)[0]).toEqual(expect.objectContaining({ error_code: "source_access_blocked" }));
     store.close();
   });
+
+  it("rejects feed items that leave the configured source host", async () => {
+    const store = new ResearchStore(join(mkdtempSync(join(tmpdir(), "egypt-feed-host-")), "research.db")); store.initialize();
+    store.upsertSource({ slug: "safe-source", name: "مصدر آمن", url: "https://example.org", feedUrl: "https://example.org/feed", sourceType: "news", ownershipType: "private", language: "ar" });
+    const rss = `<rss><channel><item><title>خبر داخل المصدر</title><link>https://news.example.org/1</link><guid>1</guid></item><item><title>رابط خارجي</title><link>https://attacker.invalid/2</link><guid>2</guid></item></channel></rss>`;
+    const fetcher = (async () => new Response(rss, { headers: { "content-type": "application/rss+xml" } })) as typeof fetch;
+    const report = await new FeedIngestor(store, { fetcher }).ingestSource("safe-source");
+    expect(report).toEqual(expect.objectContaining({ status: "success", itemsFound: 1, itemsSaved: 1 }));
+    expect(store.search("رابط خارجي")).toHaveLength(0);
+    store.close();
+  });
 });

@@ -50,7 +50,8 @@ export class FeedIngestor {
     try {
       const sourceHost = new URL(source.url).hostname;
       const response = await fetchResponse(source.feedUrl, sourceHost, 5_000_000, this.options.fetcher ?? fetch);
-      const entries = parseFeed((await readResponseBuffer(response, 5_000_000)).toString("utf8"), sourceSlug);
+      const entries = parseFeed((await readResponseBuffer(response, 5_000_000)).toString("utf8"), sourceSlug)
+        .filter((entry) => hostAllowed(new URL(entry.canonicalUrl).hostname, sourceHost));
       let saved = 0; let enriched = 0; let failures = 0;
       for (const entry of entries) {
         let content = entry.content;

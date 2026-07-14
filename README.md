@@ -14,7 +14,8 @@ MCP: `https://erx-mcp.zad.tools/mcp`
 ## الإمكانات الحالية
 
 - كتالوج من 33 مصدرًا رسميًا وقانونيًا وأكاديميًا وإحصائيًا وإخباريًا وحقوقيًا.
-- جمع مباشر من RSS وخرائط المواقع دون الاعتماد على Google News.
+- 19 مصدرًا بقنوات جمع متحققة: 17 RSS و2 Sitemap، دون الاعتماد على Google News.
+- تدقيق حي للمصادر الـ33 يختبر الاستجابة وصحة XML وعدد العناصر، ويميز الحجب و429 والتحويلات غير المتوافقة.
 - استخراج HTML وPDF، مع طبقة النص أولًا ثم OCR عربي محدود الموارد عند الحاجة.
 - احترام `robots.txt` وسياسة تأخير مستقلة لكل مصدر وحدود للحجم والصفحات.
 - أرشفة إصدارات الوثائق عند تغير محتواها.
@@ -65,6 +66,7 @@ node dist/cli.js seed
 node dist/cli.js ingest
 node dist/cli.js ingest --source eipr --full-text
 node dist/cli.js ingest --channel sitemap --max-urls 200
+node dist/cli.js audit-sources --concurrency 10
 node dist/cli.js index --provider local
 node dist/cli.js status
 ```
@@ -127,8 +129,8 @@ docker compose up -d
 
 ```bash
 npm run release:check
-git tag v0.5.1
-git push origin v0.5.1
+git tag v0.6.0
+git push origin v0.6.0
 ```
 
 راجع [قائمة الإطلاق](docs/launch-checklist.md) و[حزمة محتوى الإطلاق](docs/launch-content.md).
