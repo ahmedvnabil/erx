@@ -10,11 +10,11 @@
   "files": ["dist", "public", "server.json", "README.md", "LICENSE"],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ahmedvnabil/egypt-research-mcp.git"
+    "url": "git+https://github.com/ahmedvnabil/erx.git"
   },
-  "homepage": "https://github.com/ahmedvnabil/egypt-research-mcp#readme",
+  "homepage": "https://erx-mcp.zad.tools",
   "bugs": {
-    "url": "https://github.com/ahmedvnabil/egypt-research-mcp/issues"
+    "url": "https://github.com/ahmedvnabil/erx/issues"
   },
   "keywords": ["mcp", "egypt", "research", "arabic", "open-data"],
   "publishConfig": { "access": "public" },

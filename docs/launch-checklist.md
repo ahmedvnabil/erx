@@ -13,9 +13,9 @@
 
 ## يحتاج حسابًا أو قرارًا من المالك
 
-- [ ] إنشاء المستودع العام `ahmedvnabil/egypt-research-mcp` وإضافة remote.
-- [ ] تسجيل الدخول إلى npm وإضافة `NPM_TOKEN` في GitHub Actions.
-- [ ] ربط `erx.marsaplatform.com` أو اعتماد نطاق بديل.
+- [x] إنشاء المستودع العام `ahmedvnabil/erx` وإضافة remote.
+- [x] إضافة `NPM_TOKEN` في GitHub Actions.
+- [x] ربط `erx-mcp.zad.tools` بالخادم.
 - [ ] إعداد TLS و`EGYPT_RESEARCH_PUBLIC_URL` في الإنتاج.
 - [ ] تشغيل أول جمع وفهرسة على نسخة الإنتاج.
 - [ ] نشر tag `v0.5.0` بعد نجاح staging.

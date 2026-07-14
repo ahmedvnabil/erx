@@ -2,7 +2,7 @@ services:
   egypt-research:
     build: .
     ports:
-      - "8000:8000"
+      - "${ERX_BIND_ADDRESS:-127.0.0.1}:${ERX_PORT:-8000}:8000"
     volumes:
       - egypt-research-data:/data
       - egypt-research-backups:/backups

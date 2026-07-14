@@ -4,10 +4,18 @@
   "title": "Egypt Research Commons",
   "description": "Source-grounded research for Egyptian public affairs",
   "version": "0.5.0",
+  "websiteUrl": "https://erx-mcp.zad.tools",
   "repository": {
-    "url": "https://github.com/ahmedvnabil/egypt-research-mcp",
+    "id": "1300883187",
+    "url": "https://github.com/ahmedvnabil/erx",
     "source": "github"
   },
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://erx-mcp.zad.tools/mcp"
+    }
+  ],
   "packages": [
     {
       "registryType": "npm",

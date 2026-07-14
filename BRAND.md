@@ -63,10 +63,10 @@
 
 ## التسمية الرقمية
 
-- GitHub: `egypt-research-mcp`
+- GitHub: `ahmedvnabil/erx`
 - npm: `egypt-research-mcp`
 - MCP Registry: `io.github.ahmedvnabil/egypt-research`
-- النطاق المقترح: `erx.marsaplatform.com`
-- نقطة MCP: `https://erx.marsaplatform.com/mcp`
+- النطاق: `erx-mcp.zad.tools`
+- نقطة MCP: `https://erx-mcp.zad.tools/mcp`
 
 لا تُستخدم نقطة الإنتاج المقترحة في `server.json` قبل أن تصبح متاحة علنًا وتنجح اختبارات MCP عليها.

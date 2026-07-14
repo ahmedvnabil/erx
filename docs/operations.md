@@ -3,7 +3,7 @@
 ## Production environment
 
 Set `EGYPT_RESEARCH_PUBLIC_URL` to the full public origin, for example
-`https://erx.marsaplatform.com`. It is used for canonical URLs, OpenGraph,
+`https://erx-mcp.zad.tools`. It is used for canonical URLs, OpenGraph,
 robots, sitemap, and MCP discovery metadata. Do not include a trailing slash.
 
 Terminate TLS at the reverse proxy, redirect HTTP to HTTPS, and keep the SQLite

@@ -8,6 +8,9 @@
 [التشغيل](#التشغيل) · [أدوات MCP](#أدوات-mcp) · [النشر](#النشر) ·
 [الهوية](BRAND.md) · [خطة التسويق](docs/go-to-market.md)
 
+**Production:** [erx-mcp.zad.tools](https://erx-mcp.zad.tools) ·
+MCP: `https://erx-mcp.zad.tools/mcp`
+
 ## الإمكانات الحالية
 
 - كتالوج من 33 مصدرًا رسميًا وقانونيًا وأكاديميًا وإحصائيًا وإخباريًا وحقوقيًا.
@@ -119,9 +122,8 @@ docker compose up -d
 2. تسجيل رسمي في MCP Registry باسم `io.github.ahmedvnabil/egypt-research`.
 3. صورة متعددة المعماريات على GitHub Container Registry.
 
-قبل أول إصدار، أنشئ مستودع GitHub العام وأضف `NPM_TOKEN` إلى Actions، ثم
-انشر staging على نطاق مستقل مثل `erx.marsaplatform.com`. لا تضف Remote URL
-إلى `server.json` قبل نجاح `/readyz` و`/mcp` عبر HTTPS.
+يُنشر الموقع وStreamable HTTP على `erx-mcp.zad.tools`، بينما ينشر إنشاء tag
+الحزمة العامة وبيانات MCP Registry وGitHub Release تلقائيًا.
 
 ```bash
 npm run release:check
@@ -139,7 +141,7 @@ git push origin v0.5.0
 {
   "mcpServers": {
     "egypt-research": {
-      "url": "http://127.0.0.1:8000/mcp"
+      "url": "https://erx-mcp.zad.tools/mcp"
     }
   }
 }

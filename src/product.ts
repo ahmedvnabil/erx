@@ -126,7 +126,8 @@ export function registryManifest(baseUrl: string): Record<string, unknown> {
     title: BRAND.englishName,
     description: "Source-grounded research for Egyptian public affairs",
     version: "0.5.0",
-    repository: { url: "https://github.com/ahmedvnabil/egypt-research-mcp", source: "github" },
+    websiteUrl: baseUrl,
+    repository: { id: "1300883187", url: "https://github.com/ahmedvnabil/erx", source: "github" },
     remotes: [{ type: "streamable-http", url: `${baseUrl}/mcp` }],
     packages: [{ registryType: "npm", identifier: "egypt-research-mcp", version: "0.5.0", transport: { type: "stdio" } }]
   };
