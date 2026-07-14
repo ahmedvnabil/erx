@@ -436,6 +436,13 @@ export class ResearchStore {
     return { stories: this.count("stories"), linkedDocuments };
   }
 
+  clearEvents(): void {
+    this.transaction(() => {
+      this.db.exec("DELETE FROM event_documents");
+      this.db.exec("DELETE FROM events");
+    });
+  }
+
   countExcludedDocuments(): number {
     const row = this.db.prepare("SELECT COUNT(*) AS count FROM documents WHERE document_type='excluded'").get() as Row;
     return asNumber(row["count"]);
@@ -494,6 +501,26 @@ export class ResearchStore {
         this.db.prepare("UPDATE events SET title=?, summary=?, occurred_at=?, event_type=?, location=? WHERE id=?")
           .run(event.title, event.summary, event.occurredAt, event.eventType, event.location, eventId);
         return eventId;
+      }
+      if (event.occurredAt) {
+        const titleTokens = headlineTokens(event.title);
+        const candidates = this.db.prepare(`SELECT * FROM events
+          WHERE occurred_at IS NOT NULL
+            AND datetime(occurred_at) BETWEEN datetime(?, '-7 days') AND datetime(?, '+7 days')
+          ORDER BY occurred_at DESC LIMIT 500`).all(event.occurredAt, event.occurredAt) as Row[];
+        let best: Row | undefined;
+        let bestScore = 0.3;
+        for (const candidate of candidates) {
+          const candidateTokens = headlineTokens(asString(candidate["title"]));
+          const shared = [...titleTokens].filter((token) => candidateTokens.has(token)).length;
+          const score = jaccard(titleTokens, candidateTokens);
+          if (shared >= 2 && score >= bestScore) { best = candidate; bestScore = score; }
+        }
+        if (best) {
+          const eventId = asNumber(best["id"]);
+          this.db.prepare("INSERT INTO event_documents (event_id,document_id) VALUES (?,?)").run(eventId, documentId);
+          return eventId;
+        }
       }
       const result = this.db.prepare("INSERT INTO events (title,summary,occurred_at,event_type,location,created_at) VALUES (?,?,?,?,?,?)")
         .run(event.title, event.summary, event.occurredAt, event.eventType, event.location, now());

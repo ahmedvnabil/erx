@@ -117,4 +117,28 @@ describe("ResearchStore", () => {
     expect(store.listEntities({ limit: 20 }).length).toBeGreaterThan(0);
     store.close();
   });
+
+  it("groups repeated coverage into one event when title and date agree", () => {
+    const store = new ResearchStore(join(mkdtempSync(join(tmpdir(), "egypt-events-")), "research.db"));
+    store.initialize();
+    store.upsertSource(source);
+    const first = store.upsertDocument({
+      externalId: "event-1", sourceSlug: source.slug, canonicalUrl: "https://example.com/events/1",
+      title: "الرئاسة تعلن إطلاق برنامج دعم اللاجئين", content: "تفاصيل البرنامج.", publishedAt: "2026-07-14T10:00:00.000Z"
+    });
+    const second = store.upsertDocument({
+      externalId: "event-2", sourceSlug: source.slug, canonicalUrl: "https://example.com/events/2",
+      title: "الرئاسة: إطلاق برنامج جديد لدعم اللاجئين", content: "تفاصيل جديدة.", publishedAt: "2026-07-15T10:00:00.000Z"
+    });
+    const firstEvent = store.upsertEventForDocument(first.documentId, {
+      title: "الرئاسة تعلن إطلاق برنامج دعم اللاجئين", summary: "الملخص الأول", occurredAt: "2026-07-14T00:00:00.000Z", eventType: "حقوق اللاجئين والمهاجرين", location: null
+    });
+    const secondEvent = store.upsertEventForDocument(second.documentId, {
+      title: "الرئاسة: إطلاق برنامج جديد لدعم اللاجئين", summary: "الملخص الثاني", occurredAt: "2026-07-15T00:00:00.000Z", eventType: "حقوق اللاجئين والمهاجرين", location: null
+    });
+    expect(secondEvent).toBe(firstEvent);
+    expect(store.listEvents({ limit: 10 })).toHaveLength(1);
+    expect(store.listEvents({ limit: 10 })[0]?.documents).toHaveLength(2);
+    store.close();
+  });
 });
