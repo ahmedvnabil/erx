@@ -5,13 +5,16 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+import { bootstrapCatalog } from "../src/catalog.js";
 import { createMcpServer, TOOL_NAMES } from "../src/mcp.js";
 import { KnowledgeIndexer } from "../src/knowledge.js";
 import { ResearchStore } from "../src/store.js";
 
 describe("MCP contract", () => {
   it("publishes the stable 14-tool API", async () => {
-    const store = new ResearchStore("data/research.db", { readonly: true });
+    const store = new ResearchStore(join(mkdtempSync(join(tmpdir(), "egypt-mcp-tools-")), "research.db"));
+    store.initialize();
+    bootstrapCatalog(store);
     const server = createMcpServer(store);
     const client = new Client({ name: "contract-test", version: "1.0.0" });
     const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();

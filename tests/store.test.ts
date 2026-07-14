@@ -3,6 +3,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
+import { bootstrapCatalog } from "../src/catalog.js";
+import { KnowledgeIndexer } from "../src/knowledge.js";
 import { ResearchStore } from "../src/store.js";
 
 const source = {
@@ -53,10 +55,29 @@ describe("ResearchStore", () => {
     store.close();
   });
 
-  it("opens the existing v0.3 database without changing its contract", () => {
-    const store = new ResearchStore("data/research.db", { readonly: true });
+  it("reopens a seeded database readonly without changing its contract", () => {
+    const database = join(mkdtempSync(join(tmpdir(), "egypt-reopen-")), "research.db");
+    const writableStore = new ResearchStore(database);
+    writableStore.initialize();
+    bootstrapCatalog(writableStore);
+    const inserted = writableStore.upsertDocument({
+      externalId: "reopen-1",
+      sourceSlug: "cabinet-egypt",
+      canonicalUrl: "https://example.com/reopen/1",
+      title: "قرار اقتصادي في القاهرة",
+      excerpt: "بيان رسمي للاختبار",
+      content: "أعلن مجلس النواب قرارا اقتصاديا جديدا في القاهرة.",
+      publishedAt: "2026-07-14T10:00:00.000Z",
+      documentType: "article",
+      topics: ["economy"],
+      language: "ar"
+    });
+    new KnowledgeIndexer(writableStore).indexDocument(inserted.documentId);
+    writableStore.close();
+
+    const store = new ResearchStore(database, { readonly: true });
     expect(store.listSources()).toHaveLength(33);
-    expect(store.count("documents")).toBe(116);
+    expect(store.count("documents")).toBe(1);
     expect(store.listEntities({ limit: 20 }).length).toBeGreaterThan(0);
     store.close();
   });
