@@ -201,7 +201,7 @@ export class ResearchStore {
     const content = document.content ?? "";
     const topics = document.topics ?? [];
     const corpusText = `${document.title}\n${excerpt}\n${content}`;
-    const documentType = isNonResearchContent(corpusText) || isOutOfScopeContent(corpusText) ? "excluded" : document.documentType ?? "article";
+    const documentType = isNonResearchContent(corpusText) || isOutOfScopeContent(`${document.title}\n${excerpt}`) ? "excluded" : document.documentType ?? "article";
     const digest = createHash("sha256").update(JSON.stringify([document.title, excerpt, content])).digest("hex");
     const timestamp = now();
     return this.transaction(() => {
@@ -449,7 +449,7 @@ export class ResearchStore {
       const document = this.getDocument(documentId);
       if (!document || document.documentType === "excluded") continue;
       const corpusText = `${document.title}\n${document.excerpt}\n${document.content ?? ""}`;
-      if (!isNonResearchContent(corpusText) && !isOutOfScopeContent(corpusText)) continue;
+      if (!isNonResearchContent(corpusText) && !isOutOfScopeContent(`${document.title}\n${document.excerpt}`)) continue;
       this.transaction(() => {
         this.db.prepare("UPDATE documents SET document_type='excluded', updated_at=? WHERE id=?").run(now(), documentId);
         this.db.prepare("DELETE FROM story_documents WHERE document_id=?").run(documentId);
