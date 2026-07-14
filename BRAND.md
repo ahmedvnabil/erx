@@ -1,5 +1,7 @@
 # ERX Brand System
 
+![ERX visual brand board](docs/media/brand-board.png)
+
 ## الهوية
 
 - الاسم المختصر: **ERX**
