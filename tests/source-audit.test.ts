@@ -66,4 +66,17 @@ describe("source endpoint audit", () => {
     expect(report.status).toBe("healthy");
     expect(report.endpoints).toEqual([expect.objectContaining({ kind: "api", status: "healthy", items: 1 })]);
   });
+
+  it("audits nested POST APIs using their configured request shape", async () => {
+    let method = "";
+    const fetcher = (async (input: string | URL | Request, init?: RequestInit) => {
+      if (String(input).includes("/api/")) { method = init?.method ?? "GET"; return new Response(JSON.stringify({ result: { items: [{ id: 1 }] } }), { headers: { "content-type": "application/json" } }); }
+      return new Response("<html><body>custom</body></html>", { headers: { "content-type": "text/html" } });
+    }) as typeof fetch;
+    const report = await auditSource(source({ slug: "idsc-egypt", url: "https://www.idsc.gov.eg", collectionMethod: "api" }), fetcher, {
+      kind: "api", endpointUrl: "https://www.idsc.gov.eg/api/news", adapter: "idsc_news", canonicalUrlBase: "https://www.idsc.gov.eg/News/details", method: "POST", requestBody: { pageNumber: 1 }
+    });
+    expect(method).toBe("POST");
+    expect(report.endpoints).toEqual([expect.objectContaining({ status: "healthy", items: 1 })]);
+  });
 });

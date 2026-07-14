@@ -82,4 +82,17 @@ describe("SitemapIngestor", () => {
     expect(store.search("التضخم")[0]).toEqual(expect.objectContaining({ publishedAt: "2026-07-13T00:00:00.000Z", documentType: "statistical_release" }));
     store.close();
   });
+
+  it("normalizes nested IDSC news responses sent through the official POST API", async () => {
+    const store = new ResearchStore(join(mkdtempSync(join(tmpdir(), "egypt-idsc-api-")), "research.db")); store.initialize();
+    store.upsertSource({ slug: "idsc", name: "مركز المعلومات", url: "https://idsc.gov.eg", sourceType: "academic", ownershipType: "government", language: "ar", collectionMethod: "api" });
+    const payload = { status: 200, result: { items: [{ id: 18785, titleA: "دعوة للباحثين", contentA: `<p>${"تفاصيل المشاركة البحثية ".repeat(8)}</p>`, publishDate: "2025-07-01T00:00:00" }] } };
+    let method = "";
+    const fetcher = (async (_input: string | URL | Request, init?: RequestInit) => { method = init?.method ?? "GET"; return new Response(JSON.stringify(payload), { headers: { "content-type": "application/json" } }); }) as typeof fetch;
+    const report = await new ApiIngestor(store, { fetcher }).ingestSource("idsc", { kind: "api", endpointUrl: "https://idsc.gov.eg/api/NewsAPI/GetAllNewsWithPagination", adapter: "idsc_news", canonicalUrlBase: "https://www.idsc.gov.eg/News/details", method: "POST", requestBody: { pageNumber: 1, pageSize: 20 } });
+    expect(method).toBe("POST");
+    expect(report).toEqual(expect.objectContaining({ status: "success", itemsFound: 1, itemsSaved: 1 }));
+    expect(store.search("دعوة للباحثين")[0]).toEqual(expect.objectContaining({ canonicalUrl: "https://www.idsc.gov.eg/News/details/18785", documentType: "research_release" }));
+    store.close();
+  });
 });

@@ -28,10 +28,12 @@ class SourceRequestError extends Error {
   constructor(readonly code: string, message: string) { super(message); }
 }
 
-async function fetchResponse(url: string, allowedHost: string, maxBytes: number, fetcher: typeof fetch): Promise<Response> {
+async function fetchResponse(url: string, allowedHost: string, maxBytes: number, fetcher: typeof fetch, init: RequestInit = {}): Promise<Response> {
   const parsed = new URL(url);
   if (!hostAllowed(parsed.hostname, allowedHost)) throw new Error("URL is outside the configured source host");
-  const response = await fetcher(url, { headers: { "user-agent": USER_AGENT, accept: "application/json,application/rss+xml,application/xml,text/xml,text/html,application/pdf" }, redirect: "error", signal: AbortSignal.timeout(30_000) });
+  const headers = new Headers(init.headers);
+  headers.set("user-agent", USER_AGENT); headers.set("accept", "application/json,application/rss+xml,application/xml,text/xml,text/html,application/pdf");
+  const response = await fetcher(url, { ...init, headers, redirect: "error", signal: AbortSignal.timeout(30_000) });
   if (!response.ok) {
     const code = response.status === 401 || response.status === 403 ? "source_access_blocked" : response.status === 429 ? "source_rate_limited" : "source_http_error";
     throw new SourceRequestError(code, `HTTP ${response.status} for ${url}`);
@@ -153,10 +155,11 @@ export class ApiIngestor {
     const runId = this.store.startCrawlRun(sourceSlug);
     try {
       const host = new URL(source.url).hostname;
-      const response = await fetchResponse(connector.endpointUrl, host, 10_000_000, this.options.fetcher ?? fetch);
+      const request = connector.method === "POST" ? { method: "POST", headers: { "content-type": "application/json", "accept-language": "ar-EG" }, body: JSON.stringify(connector.requestBody ?? {}) } : {};
+      const response = await fetchResponse(connector.endpointUrl, host, 10_000_000, this.options.fetcher ?? fetch, request);
       if (!(response.headers.get("content-type") ?? "").includes("json")) throw new Error("API response is not JSON");
-      const payload = JSON.parse((await readResponseBuffer(response, 10_000_000)).toString("utf8")) as { data?: unknown[] };
-      const items = this.normalize(payload.data ?? [], connector).filter((item) => hostAllowed(new URL(item.canonicalUrl).hostname, host));
+      const payload = JSON.parse((await readResponseBuffer(response, 10_000_000)).toString("utf8")) as unknown;
+      const items = this.normalize(this.rows(payload, connector), connector).filter((item) => hostAllowed(new URL(item.canonicalUrl).hostname, host));
       let saved = 0;
       for (const item of items) {
         const result = this.store.upsertDocument({ externalId: `${sourceSlug}:api:${item.id}`, sourceSlug, canonicalUrl: item.canonicalUrl, title: item.title, excerpt: item.excerpt, content: item.content, publishedAt: item.publishedAt, documentType: item.documentType, topics: classifyDocument(`${item.title} ${item.excerpt} ${item.content}`), language: source.language });
@@ -183,7 +186,17 @@ export class ApiIngestor {
     const clean = (value: unknown): string => { const raw = text(value); return raw ? load(`<div>${raw}</div>`)("div").text().replace(/\s+/g, " ").trim() : ""; };
     const url = (id: string): string => canonicalizeUrl(connector.canonicalUrlBase.endsWith("=") ? `${connector.canonicalUrlBase}${encodeURIComponent(id)}` : `${connector.canonicalUrlBase.replace(/\/$/, "")}/${encodeURIComponent(id)}`);
     if (connector.adapter === "capmas_news") return rows.map(record).map((row) => ({ id: text(row["id"]), canonicalUrl: url(text(row["id"])), title: text(row["title"]), excerpt: clean(row["brief"]), content: clean(row["content"]), publishedAt: date(row["publishDate"]), documentType: "statistical_release" })).filter((item) => item.id && item.title && item.content);
+    if (connector.adapter === "idsc_news") return rows.map(record).map((row) => ({ id: text(row["id"]), canonicalUrl: url(text(row["id"])), title: text(row["titleA"]), excerpt: clean(row["contentA"]).slice(0, 500), content: clean(row["contentA"]), publishedAt: date(row["publishDate"]), documentType: "research_release" })).filter((item) => item.id && item.title && item.content);
     return rows.map(record).map((row) => ({ id: text(row["id"]), canonicalUrl: url(text(row["id"])), title: text(row["rule_title"]), excerpt: clean(row["rule_text"]).slice(0, 500), content: clean(row["rule_text"]), publishedAt: date(row["rule_date"]), documentType: "court_ruling" })).filter((item) => item.id && item.title && item.content);
+  }
+
+  private rows(payload: unknown, connector: ApiConnector): unknown[] {
+    if (!payload || typeof payload !== "object" || Array.isArray(payload)) return [];
+    const root = payload as Record<string, unknown>;
+    if (connector.adapter !== "idsc_news") return Array.isArray(root["data"]) ? root["data"] : [];
+    const result = root["result"];
+    return result && typeof result === "object" && !Array.isArray(result) && Array.isArray((result as Record<string, unknown>)["items"])
+      ? (result as Record<string, unknown>)["items"] as unknown[] : [];
   }
 
   private finish(runId: number, report: IngestionReport): IngestionReport {

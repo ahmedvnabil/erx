@@ -42,7 +42,7 @@ const seeds: Seed[] = [
 
 export const INITIAL_SOURCES: SourceInput[] = seeds.map(([slug, name, url, sourceType, ownershipType, language = "ar", feedUrl, sitemapUrl]) => ({
   slug, name, url, sourceType, ownershipType, language, ...(feedUrl ? { feedUrl } : {}), ...(sitemapUrl ? { sitemapUrl } : {}),
-  ...(SOURCE_CONNECTORS[slug] ? { collectionMethod: SOURCE_CONNECTORS[slug].kind } : {}), active: true
+  ...(SOURCE_CONNECTORS[slug] ? { collectionMethod: feedUrl || sitemapUrl ? "hybrid" : SOURCE_CONNECTORS[slug].kind } : {}), active: true
 }));
 
 export function bootstrapCatalog(store: ResearchStore): number {

@@ -35,9 +35,11 @@ interface Fetched {
   headers: Headers;
 }
 
-async function fetchForAudit(url: string, fetcher: typeof fetch): Promise<Fetched> {
+async function fetchForAudit(url: string, fetcher: typeof fetch, init: RequestInit = {}): Promise<Fetched> {
+  const headers = new Headers(init.headers);
+  headers.set("user-agent", USER_AGENT); headers.set("accept", "application/json,application/rss+xml,application/xml,text/xml,text/html");
   const response = await fetcher(url, {
-    headers: { "user-agent": USER_AGENT, accept: "application/json,application/rss+xml,application/xml,text/xml,text/html" },
+    ...init, headers,
     redirect: "manual",
     signal: AbortSignal.timeout(20_000)
   });
@@ -77,7 +79,8 @@ async function auditConnector(connector: SourceConnector, sourceHost: string, fe
   const kind = connector.kind;
   const url = kind === "html" ? connector.listingUrl : connector.endpointUrl;
   try {
-    const response = await fetchForAudit(url, fetcher);
+    const init = connector.kind === "api" && connector.method === "POST" ? { method: "POST", headers: { "content-type": "application/json", "accept-language": "ar-EG" }, body: JSON.stringify(connector.requestBody ?? {}) } : {};
+    const response = await fetchForAudit(url, fetcher, init);
     if (response.status >= 300 && response.status < 400) return { kind, url, status: "invalid_redirect", httpStatus: response.status, items: 0, detail: response.headers.get("location") };
     if (response.status === 401 || response.status === 403) return { kind, url, status: "blocked", httpStatus: response.status, items: 0, detail: `HTTP ${response.status}` };
     if (response.status === 429) return { kind, url, status: "rate_limited", httpStatus: 429, items: 0, detail: "HTTP 429" };
@@ -95,7 +98,11 @@ async function auditConnector(connector: SourceConnector, sourceHost: string, fe
       items = urls.size;
     } else {
       const payload = JSON.parse(response.body) as unknown;
-      const rows = Array.isArray(payload) ? payload : payload && typeof payload === "object" && Array.isArray((payload as { data?: unknown }).data) ? (payload as { data: unknown[] }).data : [];
+      const root = payload && typeof payload === "object" && !Array.isArray(payload) ? payload as Record<string, unknown> : {};
+      const result = root["result"];
+      const rows = connector.adapter === "idsc_news"
+        ? result && typeof result === "object" && !Array.isArray(result) && Array.isArray((result as Record<string, unknown>)["items"]) ? (result as Record<string, unknown>)["items"] as unknown[] : []
+        : Array.isArray(payload) ? payload : Array.isArray(root["data"]) ? root["data"] as unknown[] : [];
       items = rows.length;
     }
     return items > 0

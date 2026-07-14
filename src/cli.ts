@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { createBackup, restoreBackup, verifyBackup } from "./backup.js";
 import { bootstrapCatalog } from "./catalog.js";
 import { SOURCE_CONNECTORS } from "./connectors.js";
-import { ApiIngestor, FeedIngestor, HtmlIngestor, SitemapIngestor } from "./ingestion.js";
+import { ApiIngestor, FeedIngestor, HtmlIngestor, SitemapIngestor, type IngestionReport } from "./ingestion.js";
 import { KnowledgeIndexer } from "./knowledge.js";
 import { createMcpServer } from "./mcp.js";
 import { GeminiEmbeddingProvider, LocalEmbeddingProvider } from "./retrieval.js";
@@ -79,15 +79,17 @@ async function main(argv = process.argv.slice(2)): Promise<number> {
     const known = new Set(sources.map((source) => source.slug)); const missing = [...selected].filter((slug) => !known.has(slug));
     if (missing.length) { output({ error: "unknown_or_unconfigured_source", sources: missing.sort() }); store.close(); return 2; }
     const feed = new FeedIngestor(store, { fullText: args.flags.has("full-text") }); const sitemap = new SitemapIngestor(store);
-    const html = new HtmlIngestor(store); const api = new ApiIngestor(store); const reports = [];
+    const html = new HtmlIngestor(store); const api = new ApiIngestor(store); const reports: IngestionReport[] = [];
     for (const source of sources) {
       const connector = SOURCE_CONNECTORS[source.slug];
-      if ((channel === "auto" || channel === "rss") && source.feedUrl) reports.push(await feed.ingestSource(source.slug));
-      if ((channel === "auto" || channel === "sitemap") && source.sitemapUrl) reports.push(await sitemap.ingestSource(source.slug, number(args, "max-urls", 100)));
-      if ((channel === "auto" || channel === "html") && connector?.kind === "html") reports.push(await html.ingestSource(source.slug, connector, number(args, "html-max-urls", 20)));
+      let primarySucceeded = false;
+      if ((channel === "auto" || channel === "rss") && source.feedUrl) { const report = await feed.ingestSource(source.slug); reports.push(report); primarySucceeded ||= report.status === "success"; }
+      if ((channel === "auto" || channel === "sitemap") && source.sitemapUrl) { const report = await sitemap.ingestSource(source.slug, number(args, "max-urls", 100)); reports.push(report); primarySucceeded ||= report.status === "success"; }
+      if ((channel === "html" || (channel === "auto" && !primarySucceeded)) && connector?.kind === "html") reports.push(await html.ingestSource(source.slug, connector, number(args, "html-max-urls", 20)));
       if ((channel === "auto" || channel === "api") && connector?.kind === "api") reports.push(await api.ingestSource(source.slug, connector));
     }
-    output(reports); store.close(); return reports.some((report) => report.status === "failed") ? 1 : 0;
+    const failed = reports.some((report) => report.status === "failed" && (channel !== "auto" || !reports.some((candidate) => candidate.sourceSlug === report.sourceSlug && candidate.status === "success")));
+    output(reports); store.close(); return failed ? 1 : 0;
   }
   if (args.command === "index") {
     const providerName = value(args, "provider", "local"); const limit = number(args, "limit", 10_000);

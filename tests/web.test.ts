@@ -119,6 +119,7 @@ describe("web and REST", () => {
     const responses = await Promise.all(paths.map((path) => fetch(base + path)));
     expect(responses.every((response) => response.ok)).toBe(true);
     expect(await responses[0]!.text()).toContain("النص الكامل للقرار");
+    expect(await responses[1]!.text()).toContain("كتالوج فقط");
     expect(await responses[4]!.text()).toContain("egypt_research_documents 1");
     expect((await responses[12]!.json() as { info: { title: string } }).info.title).toBe("Egypt Research API");
     expect((await fetch(`${base}/api/v1/search?q=x`)).status).toBe(422);

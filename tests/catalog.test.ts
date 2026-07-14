@@ -13,8 +13,9 @@ describe("source catalog", () => {
     expect(INITIAL_SOURCES.filter((source) => source.sitemapUrl)).toHaveLength(1);
     expect(INITIAL_SOURCES.filter((source) => source.feedUrl || source.sitemapUrl)).toHaveLength(19);
     expect(INITIAL_SOURCES.find((source) => source.slug === "masrawy")?.feedUrl).toBe("https://www.masrawy.com/rss/feed/25/أخبار");
-    expect(INITIAL_SOURCES.filter((source) => source.collectionMethod === "html")).toHaveLength(6);
-    expect(INITIAL_SOURCES.filter((source) => source.collectionMethod === "api")).toHaveLength(2);
+    expect(INITIAL_SOURCES.filter((source) => source.collectionMethod === "html")).toHaveLength(7);
+    expect(INITIAL_SOURCES.filter((source) => source.collectionMethod === "api")).toHaveLength(3);
+    expect(INITIAL_SOURCES.filter((source) => source.collectionMethod === "hybrid")).toHaveLength(6);
     bootstrapCatalog(store); bootstrapCatalog(store);
     expect(store.listSources()).toHaveLength(33); store.close();
   });
