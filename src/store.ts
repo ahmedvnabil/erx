@@ -4,7 +4,7 @@ import { dirname, resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
 import { MIGRATIONS, SCHEMA } from "./schema.js";
-import { expandArabicSearchToken, headlineTokens, jaccard, normalizeArabic, tokenizeQuery } from "./text.js";
+import { expandArabicSearchToken, headlineTokens, isNonResearchContent, jaccard, normalizeArabic, tokenizeQuery } from "./text.js";
 import type {
   ClaimRecord,
   DocumentInput,
@@ -189,6 +189,7 @@ export class ResearchStore {
     const excerpt = document.excerpt ?? "";
     const content = document.content ?? "";
     const topics = document.topics ?? [];
+    const documentType = isNonResearchContent(`${document.title}\n${excerpt}\n${content}`) ? "excluded" : document.documentType ?? "article";
     const digest = createHash("sha256").update(JSON.stringify([document.title, excerpt, content])).digest("hex");
     const timestamp = now();
     return this.transaction(() => {
@@ -203,7 +204,7 @@ export class ResearchStore {
             archived_at, document_type, topics_json, language, content_hash, created_at, updated_at)
           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `).run(document.externalId, source["id"] as number, document.canonicalUrl, document.title, excerpt, content,
-          document.publishedAt ?? null, document.eventAt ?? null, timestamp, document.documentType ?? "article",
+          document.publishedAt ?? null, document.eventAt ?? null, timestamp, documentType,
           JSON.stringify(topics), document.language ?? "ar", digest, timestamp, timestamp);
         documentId = Number(result.lastInsertRowid);
       } else {
@@ -212,7 +213,7 @@ export class ResearchStore {
           UPDATE documents SET source_id=?, canonical_url=?, title=?, excerpt=?, content=?, published_at=?, event_at=?,
             document_type=?, topics_json=?, language=?, content_hash=?, updated_at=? WHERE id=?
         `).run(source["id"] as number, document.canonicalUrl, document.title, excerpt, content,
-          document.publishedAt ?? null, document.eventAt ?? null, document.documentType ?? "article",
+          document.publishedAt ?? null, document.eventAt ?? null, documentType,
           JSON.stringify(topics), document.language ?? "ar", digest, timestamp, documentId);
       }
       if (createdVersion) this.db.prepare(`
@@ -235,7 +236,7 @@ export class ResearchStore {
   search(query: string, options: SearchOptions = {}): SearchResult[] {
     const limit = clamp(options.limit ?? 20, 1, 100);
     const tokens = tokenizeQuery(query);
-    const conditions: string[] = [];
+    const conditions: string[] = ["d.document_type != 'excluded'"];
     const parameters: Array<string | number> = [];
     let join = "";
     let rank = "0";
@@ -287,7 +288,7 @@ export class ResearchStore {
   documentsOnDate(date: string, limit = 100): SearchResult[] {
     const rows = this.db.prepare(`SELECT d.*, s.slug AS source_slug, s.name AS source_name, s.source_type
       FROM documents d JOIN sources s ON s.id=d.source_id
-      WHERE date(COALESCE(d.published_at,d.archived_at))=date(?)
+      WHERE d.document_type != 'excluded' AND date(COALESCE(d.published_at,d.archived_at))=date(?)
       ORDER BY COALESCE(d.published_at,d.archived_at) DESC LIMIT ?`).all(date, clamp(limit, 1, 100)) as Row[];
     return rows.map((row) => this.searchResult(row));
   }
@@ -296,10 +297,11 @@ export class ResearchStore {
     const limit = clamp(options.limit ?? 100, 1, 500);
     const rows = options.documentId === undefined
       ? this.db.prepare(`SELECT e.*, SUM(de.mentions) AS mentions, COUNT(DISTINCT de.document_id) AS document_count
-          FROM entities e JOIN document_entities de ON de.entity_id=e.id GROUP BY e.id
+          FROM entities e JOIN document_entities de ON de.entity_id=e.id JOIN documents d ON d.id=de.document_id
+          WHERE d.document_type != 'excluded' GROUP BY e.id
           ORDER BY document_count DESC, mentions DESC LIMIT ?`).all(limit) as Row[]
       : this.db.prepare(`SELECT e.*, SUM(de.mentions) AS mentions, COUNT(DISTINCT de.document_id) AS document_count
-          FROM entities e JOIN document_entities de ON de.entity_id=e.id WHERE de.document_id=? GROUP BY e.id
+          FROM entities e JOIN document_entities de ON de.entity_id=e.id JOIN documents d ON d.id=de.document_id WHERE d.document_type != 'excluded' AND de.document_id=? GROUP BY e.id
           ORDER BY document_count DESC, mentions DESC LIMIT ?`).all(options.documentId, limit) as Row[];
     return rows.map((row) => ({ id: asNumber(row["id"]), canonicalName: asString(row["canonical_name"]), entityType: asString(row["entity_type"]), aliases: parseJson(row["aliases_json"], []), mentions: asNumber(row["mentions"]), documentCount: asNumber(row["document_count"]) }));
   }
@@ -307,12 +309,12 @@ export class ResearchStore {
   listClaims(options: { documentId?: number; limit?: number } = {}): ClaimRecord[] {
     const limit = clamp(options.limit ?? 100, 1, 500);
     const claims = options.documentId === undefined
-      ? this.db.prepare("SELECT DISTINCT c.* FROM claims c JOIN claim_evidence ce ON ce.claim_id=c.id ORDER BY c.last_seen_at DESC LIMIT ?").all(limit) as Row[]
-      : this.db.prepare("SELECT DISTINCT c.* FROM claims c JOIN claim_evidence ce ON ce.claim_id=c.id WHERE ce.document_id=? ORDER BY c.last_seen_at DESC LIMIT ?").all(options.documentId, limit) as Row[];
+      ? this.db.prepare("SELECT DISTINCT c.* FROM claims c JOIN claim_evidence ce ON ce.claim_id=c.id JOIN documents d ON d.id=ce.document_id WHERE d.document_type != 'excluded' ORDER BY c.last_seen_at DESC LIMIT ?").all(limit) as Row[]
+      : this.db.prepare("SELECT DISTINCT c.* FROM claims c JOIN claim_evidence ce ON ce.claim_id=c.id JOIN documents d ON d.id=ce.document_id WHERE d.document_type != 'excluded' AND ce.document_id=? ORDER BY c.last_seen_at DESC LIMIT ?").all(options.documentId, limit) as Row[];
     return claims.map((claim) => {
       const evidence = this.db.prepare(`SELECT ce.*, d.title, d.canonical_url, s.name AS source_name
         FROM claim_evidence ce JOIN documents d ON d.id=ce.document_id JOIN sources s ON s.id=d.source_id
-        WHERE ce.claim_id=? ORDER BY ce.confidence DESC`).all(claim["id"] as number) as Row[];
+        WHERE ce.claim_id=? AND d.document_type != 'excluded' ORDER BY ce.confidence DESC`).all(claim["id"] as number) as Row[];
       return {
         id: asNumber(claim["id"]), claimText: asString(claim["claim_text"]), claimType: asString(claim["claim_type"]),
         firstSeenAt: asString(claim["first_seen_at"]), lastSeenAt: asString(claim["last_seen_at"]), reviewStatus: asString(claim["review_status"]),
@@ -324,11 +326,11 @@ export class ResearchStore {
   listEvents(options: { documentId?: number; limit?: number } = {}): EventRecord[] {
     const limit = clamp(options.limit ?? 100, 1, 500);
     const events = options.documentId === undefined
-      ? this.db.prepare("SELECT DISTINCT e.* FROM events e JOIN event_documents ed ON ed.event_id=e.id ORDER BY COALESCE(e.occurred_at,e.created_at) DESC LIMIT ?").all(limit) as Row[]
-      : this.db.prepare("SELECT DISTINCT e.* FROM events e JOIN event_documents ed ON ed.event_id=e.id WHERE ed.document_id=? ORDER BY COALESCE(e.occurred_at,e.created_at) DESC LIMIT ?").all(options.documentId, limit) as Row[];
+      ? this.db.prepare("SELECT DISTINCT e.* FROM events e JOIN event_documents ed ON ed.event_id=e.id JOIN documents d ON d.id=ed.document_id WHERE d.document_type != 'excluded' ORDER BY COALESCE(e.occurred_at,e.created_at) DESC LIMIT ?").all(limit) as Row[]
+      : this.db.prepare("SELECT DISTINCT e.* FROM events e JOIN event_documents ed ON ed.event_id=e.id JOIN documents d ON d.id=ed.document_id WHERE d.document_type != 'excluded' AND ed.document_id=? ORDER BY COALESCE(e.occurred_at,e.created_at) DESC LIMIT ?").all(options.documentId, limit) as Row[];
     return events.map((event) => {
       const documents = this.db.prepare(`SELECT ed.role, d.id, d.title, d.canonical_url, s.name AS source_name
-        FROM event_documents ed JOIN documents d ON d.id=ed.document_id JOIN sources s ON s.id=d.source_id WHERE ed.event_id=?`).all(event["id"] as number) as Row[];
+        FROM event_documents ed JOIN documents d ON d.id=ed.document_id JOIN sources s ON s.id=d.source_id WHERE ed.event_id=? AND d.document_type != 'excluded'`).all(event["id"] as number) as Row[];
       return { id: asNumber(event["id"]), title: asString(event["title"]), summary: asString(event["summary"]), occurredAt: asNullableString(event["occurred_at"]), eventType: asString(event["event_type"]), location: asNullableString(event["location"]), documents: documents.map((row) => ({ documentId: asNumber(row["id"]), title: asString(row["title"]), sourceName: asString(row["source_name"]), canonicalUrl: asString(row["canonical_url"]), role: asString(row["role"]) })) };
     });
   }
@@ -336,28 +338,31 @@ export class ResearchStore {
   listStories(limit = 20): Row[] {
     const stories = this.db.prepare(`SELECT st.*, COUNT(sd.document_id) AS document_count, COUNT(DISTINCT d.source_id) AS source_count
       FROM stories st JOIN story_documents sd ON sd.story_id=st.id JOIN documents d ON d.id=sd.document_id
+      WHERE d.document_type != 'excluded'
       GROUP BY st.id ORDER BY st.last_seen_at DESC LIMIT ?`).all(clamp(limit, 1, 100)) as Row[];
     return stories.map((story) => ({
       id: asNumber(story["id"]), title: asString(story["title"]), firstSeenAt: asString(story["first_seen_at"]),
       lastSeenAt: asString(story["last_seen_at"]), documentCount: asNumber(story["document_count"]), sourceCount: asNumber(story["source_count"]),
       documents: (this.db.prepare(`SELECT d.id, d.title, d.canonical_url, d.published_at, s.slug AS source_slug, s.name AS source_name
         FROM story_documents sd JOIN documents d ON d.id=sd.document_id JOIN sources s ON s.id=d.source_id
-        WHERE sd.story_id=? ORDER BY d.published_at DESC`).all(story["id"] as number) as Row[]).map((row) => ({ documentId: asNumber(row["id"]), sourceSlug: asString(row["source_slug"]), sourceName: asString(row["source_name"]), title: asString(row["title"]), canonicalUrl: asString(row["canonical_url"]), publishedAt: asNullableString(row["published_at"]) }))
+        WHERE sd.story_id=? AND d.document_type != 'excluded' ORDER BY d.published_at DESC`).all(story["id"] as number) as Row[]).map((row) => ({ documentId: asNumber(row["id"]), sourceSlug: asString(row["source_slug"]), sourceName: asString(row["source_name"]), title: asString(row["title"]), canonicalUrl: asString(row["canonical_url"]), publishedAt: asNullableString(row["published_at"]) }))
     }));
   }
 
-  assignStory(documentId: number, threshold = 0.45): number {
-    const document = this.db.prepare("SELECT title, COALESCE(published_at,archived_at) AS seen_at FROM documents WHERE id=?").get(documentId) as Row | undefined;
+  assignStory(documentId: number, threshold = 0.3): number {
+    const document = this.db.prepare("SELECT title, document_type, COALESCE(published_at,archived_at) AS seen_at FROM documents WHERE id=?").get(documentId) as Row | undefined;
     if (!document) throw new Error(`Unknown document: ${documentId}`);
+    if (asString(document["document_type"]) === "excluded") return 0;
     const linked = this.db.prepare("SELECT story_id FROM story_documents WHERE document_id=?").get(documentId) as Row | undefined;
     if (linked) return asNumber(linked["story_id"]);
     const tokens = headlineTokens(asString(document["title"]));
-    const candidates = this.db.prepare("SELECT * FROM stories WHERE datetime(last_seen_at) BETWEEN datetime(?, '-7 days') AND datetime(?, '+7 days') ORDER BY last_seen_at DESC LIMIT 500").all(document["seen_at"] as string, document["seen_at"] as string) as Row[];
+    const candidates = this.db.prepare("SELECT * FROM stories WHERE datetime(last_seen_at) BETWEEN datetime(?, '-30 days') AND datetime(?, '+30 days') ORDER BY last_seen_at DESC LIMIT 500").all(document["seen_at"] as string, document["seen_at"] as string) as Row[];
     let best: Row | undefined;
     let score = threshold;
     for (const candidate of candidates) {
       const candidateScore = jaccard(tokens, new Set(parseJson<string[]>(candidate["tokens_json"], [])));
-      if (candidateScore >= score) { best = candidate; score = candidateScore; }
+      const shared = [...tokens].filter((token) => new Set(parseJson<string[]>(candidate["tokens_json"], [])).has(token)).length;
+      if (shared >= 2 && candidateScore >= score) { best = candidate; score = candidateScore; }
     }
     const storyId = this.transaction(() => {
       if (best) {
@@ -389,12 +394,36 @@ export class ResearchStore {
   }
 
   listEmbeddings(provider: string, model: string, limit = 20_000): Array<[number, number[]]> {
-    const rows = this.db.prepare("SELECT document_id, vector_json FROM document_embeddings WHERE provider=? AND model=? LIMIT ?").all(provider, model, clamp(limit, 1, 50_000)) as Row[];
+    const rows = this.db.prepare("SELECT e.document_id, e.vector_json FROM document_embeddings e JOIN documents d ON d.id=e.document_id WHERE e.provider=? AND e.model=? AND d.document_type != 'excluded' LIMIT ?").all(provider, model, clamp(limit, 1, 50_000)) as Row[];
     return rows.map((row) => [asNumber(row["document_id"]), parseJson<number[]>(row["vector_json"], [])]);
   }
 
   listDocumentIds(limit = 10_000): number[] {
     return (this.db.prepare("SELECT id FROM documents ORDER BY id LIMIT ?").all(clamp(limit, 1, 100_000)) as Row[]).map((row) => asNumber(row["id"]));
+  }
+
+  reclassifyDocuments(): { excluded: number; searchable: number } {
+    let excluded = 0;
+    for (const documentId of this.listDocumentIds(100_000)) {
+      const document = this.getDocument(documentId);
+      if (!document || document.documentType === "excluded") continue;
+      if (!isNonResearchContent(`${document.title}\n${document.excerpt}\n${document.content ?? ""}`)) continue;
+      this.transaction(() => {
+        this.db.prepare("UPDATE documents SET document_type='excluded', updated_at=? WHERE id=?").run(now(), documentId);
+        this.db.prepare("DELETE FROM story_documents WHERE document_id=?").run(documentId);
+        this.db.prepare("DELETE FROM document_entities WHERE document_id=?").run(documentId);
+        this.db.prepare("DELETE FROM claim_evidence WHERE document_id=?").run(documentId);
+        this.db.prepare("DELETE FROM event_documents WHERE document_id=?").run(documentId);
+      });
+      excluded += 1;
+    }
+    this.purgeOrphanKnowledge();
+    return { excluded, searchable: this.count("documents") - this.countExcludedDocuments() };
+  }
+
+  countExcludedDocuments(): number {
+    const row = this.db.prepare("SELECT COUNT(*) AS count FROM documents WHERE document_type='excluded'").get() as Row;
+    return asNumber(row["count"]);
   }
 
   resetDocumentKnowledge(documentId: number): void {
@@ -457,6 +486,11 @@ export class ResearchStore {
       this.db.prepare("INSERT INTO event_documents (event_id,document_id) VALUES (?,?)").run(eventId, documentId);
       return eventId;
     });
+  }
+
+  updateDocumentEventAt(documentId: number, eventAt: string | null): void {
+    validateDate(eventAt, "eventAt");
+    this.db.prepare("UPDATE documents SET event_at=?, updated_at=? WHERE id=?").run(eventAt, now(), documentId);
   }
 
   upsertEmbedding(documentId: number, provider: string, model: string, vector: number[], contentHash: string): void {

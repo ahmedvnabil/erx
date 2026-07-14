@@ -37,7 +37,7 @@ const output = (payload: unknown): void => { process.stdout.write(`${typeof payl
 
 async function main(argv = process.argv.slice(2)): Promise<number> {
   const args = parse(argv);
-  if (!args.command || args.flags.has("help")) { output("Usage: egypt-research <init|seed|ingest|audit-sources|index|status|backup|verify-backup|restore|serve> [options]"); return args.command ? 0 : 2; }
+  if (!args.command || args.flags.has("help")) { output("Usage: egypt-research <init|seed|ingest|audit-sources|index|reclassify|status|backup|verify-backup|restore|serve> [options]"); return args.command ? 0 : 2; }
   if (args.command === "verify-backup") { const input = value(args, "input"); output({ status: verifyBackup(input), backup: input }); return 0; }
   if (args.command === "backup") {
     const destination = value(args, "output", `backups/research-${new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z")}.db`);
@@ -56,6 +56,10 @@ async function main(argv = process.argv.slice(2)): Promise<number> {
     if (args.flags.has("json")) output(sources);
     else output(sources.map((source) => `${source.slug.padEnd(30)} ${source.healthStatus.padEnd(10)} ${String(source.documentCount).padStart(5)} ${source.name}`).join("\n"));
     store.close(); return 0;
+  }
+  if (args.command === "reclassify") {
+    const result = store.reclassifyDocuments();
+    output({ status: "ok", ...result }); store.close(); return 0;
   }
   if (args.command === "audit-sources") {
     bootstrapCatalog(store);

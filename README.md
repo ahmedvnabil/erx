@@ -20,6 +20,7 @@ MCP: `https://erx-mcp.zad.tools/mcp`
 - احترام `robots.txt` وسياسة تأخير مستقلة لكل مصدر وحدود للحجم والصفحات.
 - أرشفة إصدارات الوثائق عند تغير محتواها.
 - تجميع التغطيات المتشابهة في قصص مع إظهار عدد الوثائق وتنوع المصادر.
+- استبعاد المواد الرياضية والترفيهية آليًا من طبقة البحث مع الاحتفاظ بها في الأرشيف، ويمكن إعادة تطبيق التصنيف عبر `node dist/cli.js reclassify`.
 - سجل لكل عملية جمع، بما فيها الفشل والمدة وعدد المواد.
 - بحث عربي هجين يجمع SQLite FTS5 وتمثيلًا دلاليًا محليًا قابلًا للتفسير.
 - دعم اختياري لـ Gemini Embeddings عبر `GEMINI_API_KEY`.
@@ -72,6 +73,7 @@ node dist/cli.js ingest --channel html --html-max-urls 20
 node dist/cli.js ingest --channel api
 node dist/cli.js audit-sources --concurrency 10
 node dist/cli.js index --provider local
+node dist/cli.js reclassify
 node dist/cli.js status
 ```
 

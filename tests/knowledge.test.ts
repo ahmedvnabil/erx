@@ -41,6 +41,18 @@ describe("knowledge and retrieval", () => {
     store.close();
   });
 
+  it("discovers organization phrases and explicit Arabic event dates", () => {
+    const { store } = fixture();
+    const inserted = store.upsertDocument({
+      externalId: "dated:1", sourceSlug: "rights-source", canonicalUrl: "https://example.org/dated/1",
+      title: "وزارة التموين تعلن قرارا جديدا", content: "في 12 يوليو 2026 أعلنت وزارة التموين قرارا جديدا بشأن الأسواق.", publishedAt: "2026-07-14T00:00:00.000Z"
+    });
+    new KnowledgeIndexer(store).indexDocument(inserted.documentId);
+    expect(store.listEntities({ documentId: inserted.documentId }).map((entity) => entity.canonicalName)).toContain("وزاره التموين");
+    expect(store.listEvents({ documentId: inserted.documentId })[0]?.occurredAt).toBe("2026-07-12T00:00:00.000Z");
+    store.close();
+  });
+
   it("rejects weak semantic-only matches instead of inventing relevance", () => {
     const { store, documentId } = fixture();
     const weakVector = [0.15, Math.sqrt(1 - (0.15 ** 2))];

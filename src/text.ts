@@ -33,6 +33,12 @@ const topicKeywords: Record<(typeof TOPICS)[number], string[]> = {
   "سيناء والحدود": ["سيناء", "رفح", "العريش", "الحدود المصريه"]
 };
 
+const nonResearchKeywords = [
+  "كاس العالم", "مباراه", "التشكيل الرسمي", "ركلات الترجيح", "الدوري", "مبابي", "امام عاشور", "لامين يامال",
+  "فيلم", "مسلسل", "اغنيه", "مغني", "ممثل", "ممثله", "مسرحيه", "حفل غنائي"
+];
+const publicAffairsExceptions = ["وزاره الشباب والرياضه", "قانون الرياضه", "الرياضه المصريه"];
+
 export function normalizeArabic(value: string): string {
   return (value ?? "")
     .normalize("NFKC")
@@ -78,6 +84,12 @@ export function expandArabicSearchToken(value: string): string[] {
 export function classifyDocument(value: string): string[] {
   const normalized = normalizeArabic(value);
   return TOPICS.filter((topic) => topicKeywords[topic].some((keyword) => normalized.includes(normalizeArabic(keyword))));
+}
+
+export function isNonResearchContent(value: string): boolean {
+  const normalized = normalizeArabic(value);
+  if (publicAffairsExceptions.some((keyword) => normalized.includes(normalizeArabic(keyword)))) return false;
+  return nonResearchKeywords.some((keyword) => normalized.includes(normalizeArabic(keyword)));
 }
 
 export function headlineTokens(value: string): Set<string> {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { classifyDocument, expandArabicSearchToken, normalizeArabic, tokenizeQuery } from "../src/text.js";
+import { classifyDocument, expandArabicSearchToken, isNonResearchContent, normalizeArabic, tokenizeQuery } from "../src/text.js";
 
 describe("Arabic text helpers", () => {
   it("normalizes Arabic variants and removes diacritics", () => {
@@ -22,5 +22,11 @@ describe("Arabic text helpers", () => {
   it("classifies legal and human-rights material", () => {
     expect(classifyDocument("قرار المحكمة الدستورية بشأن القانون")).toContain("القضاء والمحاكمات");
     expect(classifyDocument("تقرير عن السجن ومكان الاحتجاز")).toContain("أوضاع السجون");
+  });
+
+  it("flags sports and entertainment noise without hiding public-affairs coverage", () => {
+    expect(isNonResearchContent("مبابي ضد لامين والتشكيل الرسمي لمباراة كأس العالم")).toBe(true);
+    expect(isNonResearchContent("وزارة الشباب والرياضة تناقش قانون الرياضة المصري")).toBe(false);
+    expect(isNonResearchContent("بيان عن قانون العمل والعدالة الاجتماعية")).toBe(false);
   });
 });
