@@ -1,12 +1,13 @@
+node_modules/
+coverage/
+.coverage
 .venv/
 .pytest_cache/
 .ruff_cache/
-.coverage
-htmlcov/
+__pycache__/
 dist/
 build/
-__pycache__/
-*.py[cod]
 *.db
+*.db-*
 .env
 .DS_Store

@@ -19,8 +19,8 @@ checkout path.
 ## Recovery
 
 ```bash
-egypt-research-mcp verify-backup --input backups/snapshot.db
-egypt-research-mcp --database data/research.db restore --input backups/snapshot.db --yes
+node dist/cli.js verify-backup --input backups/snapshot.db
+node dist/cli.js --database data/research.db restore --input backups/snapshot.db --yes
 ```
 
 Restore always creates a `pre-restore` safety copy of the live database first.
@@ -34,7 +34,7 @@ and place SQLite on a single writer node.
 
 ## Public release
 
-The tag workflow creates signed-by-GitHub release artifacts. Publishing to PyPI,
+The tag workflow creates signed-by-GitHub npm package artifacts. Publishing to npm,
 GHCR, and the official MCP Registry should only happen after the public repository,
 package namespace, and production HTTPS endpoint are fixed; registry versions are
 immutable.

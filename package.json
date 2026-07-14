@@ -1,0 +1,42 @@
+{
+  "name": "egypt-research-mcp",
+  "version": "0.4.0",
+  "description": "Source-grounded MCP server and research commons for Egyptian public affairs",
+  "license": "MIT",
+  "type": "module",
+  "main": "dist/mcp.js",
+  "types": "dist/mcp.d.ts",
+  "files": ["dist", "README.md", "LICENSE"],
+  "keywords": ["mcp", "egypt", "research", "arabic", "open-data"],
+  "publishConfig": { "access": "public" },
+  "bin": {
+    "egypt-research": "dist/cli.js",
+    "egypt-research-mcp": "dist/cli.js"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "check": "tsc --noEmit",
+    "dev": "tsx src/cli.ts",
+    "start": "node dist/cli.js",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:watch": "vitest",
+    "audit": "npm audit --audit-level=high"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "cheerio": "^1.1.2",
+    "fast-xml-parser": "^5.3.6",
+    "zod": "^4.3.5"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "@vitest/coverage-v8": "^4.0.18",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18"
+  }
+}

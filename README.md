@@ -47,23 +47,24 @@
 
 ## التشغيل
 
-يتطلب Python 3.11 أو أحدث و[uv](https://docs.astral.sh/uv/).
+يتطلب Node.js 24 أو أحدث وnpm.
 
 ```bash
-uv sync --extra dev
-uv run egypt-research-mcp init
-uv run egypt-research-mcp seed
-uv run egypt-research-mcp ingest
-uv run egypt-research-mcp ingest --source eipr --full-text
-uv run egypt-research-mcp ingest --channel sitemap --max-urls 200
-uv run egypt-research-mcp index --provider local
-uv run egypt-research-mcp status
+npm ci
+npm run build
+node dist/cli.js init
+node dist/cli.js seed
+node dist/cli.js ingest
+node dist/cli.js ingest --source eipr --full-text
+node dist/cli.js ingest --channel sitemap --max-urls 200
+node dist/cli.js index --provider local
+node dist/cli.js status
 ```
 
 تشغيل واجهة الباحث وMCP معًا:
 
 ```bash
-uv run egypt-research-mcp serve --transport http --host 127.0.0.1 --port 8000
+node dist/cli.js serve --transport http --host 127.0.0.1 --port 8000
 ```
 
 عنوان الاتصال:
@@ -78,7 +79,7 @@ http://127.0.0.1:8000/mcp
 تشغيله محليًا عبر stdio:
 
 ```bash
-uv run egypt-research-mcp serve --transport stdio
+node dist/cli.js serve --transport stdio
 ```
 
 يمكن تغيير قاعدة البيانات عبر `--database` أو متغير البيئة `EGYPT_RESEARCH_DB`.
@@ -86,17 +87,17 @@ uv run egypt-research-mcp serve --transport stdio
 النسخ والاستعادة:
 
 ```bash
-uv run egypt-research-mcp backup --output backups/snapshot.db
-uv run egypt-research-mcp verify-backup --input backups/snapshot.db
-uv run egypt-research-mcp restore --input backups/snapshot.db --yes
+node dist/cli.js backup --output backups/snapshot.db
+node dist/cli.js verify-backup --input backups/snapshot.db
+node dist/cli.js restore --input backups/snapshot.db --yes
 ```
 
 ## Docker
 
 ```bash
 docker compose build
-docker compose run --rm egypt-research egypt-research-mcp seed
-docker compose run --rm egypt-research egypt-research-mcp ingest
+docker compose run --rm egypt-research node dist/cli.js seed
+docker compose run --rm egypt-research node dist/cli.js ingest
 docker compose up -d
 ```
 
@@ -121,7 +122,9 @@ docker compose up -d
 ## الاختبارات
 
 ```bash
-uv run pytest --cov=egypt_research_mcp --cov-report=term-missing
+npm run check
+npm run test:coverage
+npm run build
 ```
 
 ## المنهجية والحدود

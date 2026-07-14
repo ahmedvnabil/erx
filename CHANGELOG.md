@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.0 — 2026-07-14
+
+- إعادة بناء كاملة بـTypeScript وNode.js 24 دون اعتماد تشغيلي على Python.
+- الحفاظ على مخطط SQLite والبيانات وعقود أدوات MCP الأربعة عشر وREST v1.
+- نقل RSS وSitemap وHTML وPDF/OCR والبحث الهجين وطبقة المعرفة والنسخ الاحتياطي.
+- استخدام MCP TypeScript SDK المستقر مع stdio وStreamable HTTP.
+- اختبارات Vitest وتغطية أسطر تتجاوز 90%، وحاوية Node غير جذرية وCI/npm release.
+
 ## 0.3.0 — 2026-07-14
 
 - جمع متعدد القنوات من RSS وSitemap وHTML وPDF مع OCR عربي واحترام robots.txt.

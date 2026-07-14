@@ -1,0 +1,140 @@
+import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
+import * as z from "zod/v4";
+
+import { EXPORT_FORMATS, exportResults, type ExportFormat } from "./exports.js";
+import { HybridRetriever } from "./retrieval.js";
+import { TOPICS } from "./text.js";
+import type { ResearchStore } from "./store.js";
+import { SOURCE_TYPES } from "./types.js";
+
+export const TOOL_NAMES = [
+  "search_egypt", "get_document", "build_timeline", "compare_sources", "get_source_profile",
+  "list_sources", "get_daily_brief", "list_stories", "export_references", "hybrid_search",
+  "find_entities", "list_events", "trace_claim", "save_research_query"
+] as const;
+
+export const METHODOLOGY = {
+  purpose: "بنية بحثية موثقة المصدر للشأن المصري، وليست جهة تحقق أو إصدار أحكام.",
+  principles: [
+    "إرجاع رابط المصدر الأصلي وتاريخ النشر مع كل نتيجة.",
+    "الفصل بين تاريخ الواقعة وتاريخ نشر الوثيقة وتاريخ أرشفتها.",
+    "عرض نوع المصدر وملكيته دون منحه درجة حقيقة آلية.",
+    "عدم اعتبار تكرار الادعاء في مصادر متعددة دليلاً نهائياً على صحته.",
+    "الاحتفاظ بإصدارات الوثيقة عند تغير محتواها."
+  ],
+  limitations: [
+    "قد تتأخر بعض المصادر بسبب الحجب أو تغير بنية الموقع.",
+    "المواد غير المتاحة عبر قناة مباشرة موثقة تظهر في الكتالوج دون ادعاء جمعها."
+  ]
+} as const;
+
+function toSnake(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(toSnake);
+  if (value && typeof value === "object") {
+    return Object.fromEntries(Object.entries(value).map(([key, entry]) => [key.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`), toSnake(entry)]));
+  }
+  return value;
+}
+
+function toolResult(payload: Record<string, unknown>) {
+  const wire = toSnake(payload) as Record<string, unknown>;
+  return { content: [{ type: "text" as const, text: JSON.stringify(wire, null, 2) }], structuredContent: wire };
+}
+
+const readOnly = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false } as const;
+
+export function createMcpServer(store: ResearchStore): McpServer {
+  const server = new McpServer({
+    name: "Egypt Research MCP",
+    version: "0.4.0",
+    description: "مصادر وأدلة وخطوط زمنية موثقة للباحثين في الشأن المصري"
+  }, {
+    instructions: "ابحث في مصادر الشأن المصري وأعد النتائج مع الاستشهادات. لا تصف الادعاءات بأنها حقائق مؤكدة دون مقارنة مصادر مستقلة ووثائق أولية."
+  });
+
+  server.registerTool("search_egypt", {
+    description: "بحث موحد في الوثائق المصرية مع فلاتر المصدر والتاريخ.",
+    inputSchema: {
+      query: z.string().min(1), source_types: z.array(z.enum(SOURCE_TYPES)).optional(), date_from: z.string().optional(),
+      date_to: z.string().optional(), limit: z.number().int().min(1).max(100).default(20)
+    }, annotations: readOnly
+  }, ({ query, source_types, date_from, date_to, limit }) => {
+    const results = store.search(query, { limit, ...(source_types ? { sourceTypes: source_types } : {}), ...(date_from ? { dateFrom: date_from } : {}), ...(date_to ? { dateTo: date_to } : {}) });
+    return toolResult({ query, count: results.length, results: results.map((result) => ({ ...result, excerpt: result.excerpt.slice(0, 800) })) });
+  });
+
+  server.registerTool("get_document", { description: "استرجاع سجل وثيقة واحد مع بيانات الاستشهاد.", inputSchema: { document_id: z.number().int().positive() }, annotations: readOnly }, ({ document_id }) => {
+    const document = store.getDocument(document_id);
+    return toolResult(document ? { ok: true, document } : { ok: false, error: { code: "not_found", documentId: document_id } });
+  });
+
+  server.registerTool("build_timeline", { description: "بناء خط زمني موثق لموضوع أو قضية أو كيان.", inputSchema: { query: z.string().min(1), limit: z.number().int().min(1).max(100).default(100) }, annotations: readOnly }, ({ query, limit }) => {
+    const items = store.timeline(query, limit);
+    return toolResult({ query, count: items.length, items });
+  });
+
+  server.registerTool("compare_sources", { description: "مقارنة تغطية أنواع مختلفة من المصادر لنفس الاستعلام.", inputSchema: { query: z.string().min(1), limit: z.number().int().min(1).max(100).default(50) }, annotations: readOnly }, ({ query, limit }) => {
+    const results = store.search(query, { limit });
+    const bySourceType: Record<string, unknown[]> = {};
+    for (const result of results) (bySourceType[result.sourceType] ??= []).push(result);
+    return toolResult({ query, totalDocuments: results.length, independentSourceCount: new Set(results.map((result) => result.sourceSlug)).size, bySourceType });
+  });
+
+  server.registerTool("get_source_profile", { description: "عرض نوع المصدر وملكيته وصحة جمعه وعدد وثائقه.", inputSchema: { source_slug: z.string().min(1) }, annotations: readOnly }, ({ source_slug }) => {
+    const source = store.getSource(source_slug);
+    return toolResult(source ? { ok: true, source } : { ok: false, error: { code: "source_not_found", sourceSlug: source_slug } });
+  });
+
+  server.registerTool("list_sources", { description: "عرض كتالوج المصادر وحالة الأرشفة لكل مصدر.", inputSchema: { source_type: z.enum(SOURCE_TYPES).optional(), active_only: z.boolean().default(true) }, annotations: readOnly }, ({ source_type, active_only }) => {
+    const sources = store.listSources().filter((source) => (!source_type || source.sourceType === source_type) && (!active_only || source.active));
+    return toolResult({ count: sources.length, sources });
+  });
+
+  server.registerTool("get_daily_brief", { description: "إرجاع مواد يوم محدد مع قياس تنوع المصادر.", inputSchema: { date: z.string().min(8), limit: z.number().int().min(1).max(100).default(50) }, annotations: readOnly }, ({ date, limit }) => {
+    const items = store.documentsOnDate(date, limit);
+    return toolResult({ date, documentCount: items.length, sourceCount: new Set(items.map((item) => item.sourceSlug)).size, items });
+  });
+
+  server.registerTool("list_stories", { description: "عرض القصص المتقاربة مع عدد الوثائق وتنوع المصادر.", inputSchema: { limit: z.number().int().min(1).max(100).default(20) }, annotations: readOnly }, ({ limit }) => {
+    const stories = store.listStories(limit);
+    return toolResult({ count: stories.length, stories });
+  });
+
+  server.registerTool("export_references", { description: "تصدير نتائج البحث بصيغة CSV أو JSONL أو BibTeX أو RIS.", inputSchema: { query: z.string().min(1), format: z.enum(EXPORT_FORMATS).default("ris"), limit: z.number().int().min(1).max(100).default(100) }, annotations: readOnly }, ({ query, format, limit }) => {
+    const results = store.search(query, { limit });
+    return toolResult({ ok: true, format, count: results.length, content: exportResults(results, format as ExportFormat) });
+  });
+
+  server.registerTool("hybrid_search", { description: "بحث هجين يجمع المطابقة النصية والدلالية مع تفسير الترتيب.", inputSchema: { query: z.string().min(1), limit: z.number().int().min(1).max(100).default(20) }, annotations: readOnly }, ({ query, limit }) => {
+    const results = new HybridRetriever(store).search(query, { limit });
+    return toolResult({ query, count: results.length, results });
+  });
+
+  server.registerTool("find_entities", { description: "عرض الكيانات المستخرجة وأعداد ظهورها في الوثائق.", inputSchema: { document_id: z.number().int().positive().optional(), limit: z.number().int().min(1).max(500).default(100) }, annotations: readOnly }, ({ document_id, limit }) => {
+    const entities = store.listEntities({ limit, ...(document_id ? { documentId: document_id } : {}) });
+    return toolResult({ count: entities.length, entities });
+  });
+
+  server.registerTool("list_events", { description: "عرض الأحداث المؤرخة وربط كل حدث بوثائقه الأصلية.", inputSchema: { document_id: z.number().int().positive().optional(), limit: z.number().int().min(1).max(500).default(100) }, annotations: readOnly }, ({ document_id, limit }) => {
+    const events = store.listEvents({ limit, ...(document_id ? { documentId: document_id } : {}) });
+    return toolResult({ count: events.length, events });
+  });
+
+  server.registerTool("trace_claim", { description: "تتبع ادعاء واحد إلى الأدلة والمصادر التي أوردته.", inputSchema: { claim_id: z.number().int().positive() }, annotations: readOnly }, ({ claim_id }) => {
+    const claim = store.listClaims({ limit: 500 }).find((item) => item.id === claim_id);
+    return toolResult(claim ? { ok: true, claim } : { ok: false, error: { code: "claim_not_found" } });
+  });
+
+  server.registerTool("save_research_query", { description: "حفظ استعلام بحثي محلي لإعادة تشغيله ومتابعته لاحقًا.", inputSchema: { name: z.string().min(2).max(200), query: z.string().min(2).max(1000) }, annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false } }, ({ name, query }) => toolResult({ ok: true, savedSearch: store.saveSearch(name, query) }));
+
+  const jsonResource = (uri: string, value: () => unknown) => server.registerResource(uri.split("//")[1] ?? uri, uri, { mimeType: "application/json" }, async () => ({ contents: [{ uri, mimeType: "application/json", text: JSON.stringify(toSnake(value()), null, 2) }] }));
+  jsonResource("egypt://sources", () => store.listSources());
+  jsonResource("egypt://taxonomy", () => TOPICS);
+  jsonResource("egypt://methodology", () => METHODOLOGY);
+  server.registerResource("source-profile", new ResourceTemplate("egypt://source/{slug}", { list: undefined }), { mimeType: "application/json" }, async (uri, variables) => ({ contents: [{ uri: uri.href, mimeType: "application/json", text: JSON.stringify(toSnake(store.getSource(String(variables["slug"])) ?? { error: "source_not_found" }), null, 2) }] }));
+
+  server.registerPrompt("research_brief", { description: "خطة موجز بحثي موثق ومتوازن عن موضوع مصري.", argsSchema: { topic: z.string().min(1), date_from: z.string().optional(), date_to: z.string().optional() } }, async ({ topic, date_from, date_to }) => ({ messages: [{ role: "user", content: { type: "text", text: `ابحث عن: ${topic}. الفترة: ${date_from || "غير محددة"} إلى ${date_to || "الآن"}. ابدأ بالوثائق الأولية، ثم قارن المصادر الرسمية والإعلامية والحقوقية، وابنِ خطًا زمنيًا. ضع رابطًا وتاريخًا بجانب كل ادعاء، واذكر فجوات الأدلة.` } }] }));
+  server.registerPrompt("verify_claim", { description: "منهج للتحقق من ادعاء متعلق بالشأن المصري.", argsSchema: { claim: z.string().min(1) } }, async ({ claim }) => ({ messages: [{ role: "user", content: { type: "text", text: `تحقق من الادعاء التالي دون افتراض صحته: ${claim}. ابحث عن المصدر الأولي، وافصل بين التأكيد المستقل وإعادة النشر، واعرض الأدلة المؤيدة والمعارضة وما لا يمكن حسمه.` } }] }));
+
+  return server;
+}

@@ -1,0 +1,38 @@
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { describe, expect, it } from "vitest";
+
+import { FeedIngestor, SitemapIngestor } from "../src/ingestion.js";
+import { ResearchStore } from "../src/store.js";
+
+describe("SitemapIngestor", () => {
+  it("archives HTML and PDF while respecting robots", async () => {
+    const store = new ResearchStore(join(mkdtempSync(join(tmpdir(), "egypt-ingest-")), "research.db"));
+    store.initialize();
+    store.upsertSource({ slug: "sitemap-source", name: "مصدر خريطة الموقع", url: "https://example.org", sitemapUrl: "https://example.org/sitemap.xml", sourceType: "legal", ownershipType: "government", language: "ar" });
+    const responses: Record<string, Response> = {
+      "/robots.txt": new Response("User-agent: *\nDisallow: /blocked/", { headers: { "content-type": "text/plain" } }),
+      "/sitemap.xml": new Response(`<urlset><url><loc>https://example.org/article/1</loc></url><url><loc>https://example.org/files/law.pdf</loc></url><url><loc>https://example.org/blocked/2</loc></url></urlset>`, { headers: { "content-type": "application/xml" } }),
+      "/article/1": new Response(`<article><h1>قرار قانوني جديد</h1><p>${"تفاصيل القرار القانوني ".repeat(15)}</p></article>`, { headers: { "content-type": "text/html" } }),
+      "/files/law.pdf": new Response(Buffer.from("%PDF-fake"), { headers: { "content-type": "application/pdf" } })
+    };
+    const fetcher = (async (input: string | URL | Request) => responses[new URL(input instanceof Request ? input.url : input).pathname] ?? new Response("missing", { status: 404 })) as typeof fetch;
+    const report = await new SitemapIngestor(store, { fetcher, sleeper: async () => {}, pdfExtractor: () => ({ text: "نص القانون المستخرج من ملف PDF", pageCount: 3, ocrUsed: true, extractor: "tesseract" }) }).ingestSource("sitemap-source");
+    expect(report).toEqual(expect.objectContaining({ status: "success", itemsFound: 2, itemsSaved: 2 }));
+    expect(store.search("قرار قانوني")).toHaveLength(1);
+    expect(store.search("نص القانون")).toHaveLength(1);
+    store.close();
+  });
+
+  it("archives configured feeds and reports unconfigured sources", async () => {
+    const store = new ResearchStore(join(mkdtempSync(join(tmpdir(), "egypt-feed-")), "research.db")); store.initialize();
+    store.upsertSource({ slug: "feed-source", name: "مصدر تغذية", url: "https://example.org", feedUrl: "https://example.org/feed", sourceType: "news", ownershipType: "private", language: "ar" });
+    store.upsertSource({ slug: "empty-source", name: "مصدر بلا تغذية", url: "https://empty.example.org", sourceType: "news", ownershipType: "private", language: "ar" });
+    const rss = `<rss><channel><item><title>خبر اقتصادي موثق</title><link>https://example.org/1</link><description>تفاصيل الخبر الاقتصادي</description><guid>1</guid></item></channel></rss>`;
+    const fetcher = (async () => new Response(rss, { headers: { "content-type": "application/rss+xml" } })) as typeof fetch;
+    expect(await new FeedIngestor(store, { fetcher }).ingestSource("feed-source")).toEqual(expect.objectContaining({ status: "success", itemsSaved: 1 }));
+    expect(await new FeedIngestor(store, { fetcher }).ingestSource("empty-source")).toEqual(expect.objectContaining({ status: "skipped", errorCode: "no_feed" }));
+    store.close();
+  });
+});

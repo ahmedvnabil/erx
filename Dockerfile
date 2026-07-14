@@ -1,14 +1,13 @@
-FROM python:3.13-slim AS builder
+FROM node:24-bookworm-slim AS builder
 
 WORKDIR /build
-COPY pyproject.toml README.md LICENSE ./
+COPY package.json package-lock.json tsconfig.json tsconfig.build.json ./
 COPY src ./src
-RUN python -m pip wheel --no-cache-dir --wheel-dir /wheels .
+RUN npm ci && npm run build
 
-FROM python:3.13-slim AS runtime
+FROM node:24-bookworm-slim AS runtime
 
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
+ENV NODE_ENV=production \
     EGYPT_RESEARCH_DB=/data/research.db
 
 RUN apt-get update && apt-get install --no-install-recommends -y \
@@ -17,8 +16,9 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
     && addgroup --system app && adduser --system --ingroup app app
 WORKDIR /app
 
-COPY --from=builder /wheels /wheels
-RUN pip install --no-cache-dir /wheels/*.whl && rm -rf /wheels
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev --ignore-scripts && npm cache clean --force
+COPY --from=builder /build/dist ./dist
 COPY deploy ./deploy
 RUN chmod 0555 /app/deploy/collect-and-index.sh
 
@@ -27,6 +27,6 @@ USER app
 EXPOSE 8000
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/readyz', timeout=3)"
+  CMD node -e "fetch('http://127.0.0.1:8000/readyz').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
 
-CMD ["egypt-research-mcp", "serve", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["node", "dist/cli.js", "serve", "--host", "0.0.0.0", "--port", "8000"]

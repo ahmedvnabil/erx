@@ -8,7 +8,8 @@
 4. لا تمنح مصدرًا درجة حقيقة ولا تحذف رابط الأصل من النتائج.
 
 ```bash
-uv sync --extra dev
-uv run pytest --cov=egypt_research_mcp
-uv run ruff check .
+npm ci
+npm run check
+npm run test:coverage
+npm run build
 ```

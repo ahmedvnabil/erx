@@ -11,22 +11,19 @@ jobs:
   verify:
     strategy:
       matrix:
-        python-version: ["3.11", "3.13"]
+        node-version: ["24", "25"]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-node@v6
         with:
-          python-version: ${{ matrix.python-version }}
-      - uses: astral-sh/setup-uv@v8
-        with:
-          version: "0.11.28"
-          enable-cache: true
-      - run: uv sync --frozen --extra dev
-      - run: uv run ruff check .
-      - run: uv run pytest --cov=egypt_research_mcp --cov-report=term-missing
-      - run: uv tool run pip-audit --strict
-      - run: uv build
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - run: npm run test:coverage
+      - run: npm run audit
+      - run: npm run build
 
   container:
     runs-on: ubuntu-latest
@@ -41,4 +38,4 @@ jobs:
           tags: egypt-research-mcp:ci
           cache-from: type=gha
           cache-to: type=gha,mode=max
-      - run: docker run --rm egypt-research-mcp:ci egypt-research-mcp init
+      - run: docker run --rm egypt-research-mcp:ci node dist/cli.js init

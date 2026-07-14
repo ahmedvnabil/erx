@@ -6,4 +6,4 @@
 - [ ] REST API موثقة، بحوث محفوظة وتصدير موسع.
 - [ ] إدارة تشغيلية، metrics، rate limiting ومفتاح إدارة.
 - [ ] scheduler ونسخ احتياطي واسترجاع وترحيل PostgreSQL.
-- [ ] نشر GitHub/PyPI/GHCR/دومين وMCP Registry.
+- [ ] نشر GitHub/npm/GHCR/دومين وMCP Registry.
