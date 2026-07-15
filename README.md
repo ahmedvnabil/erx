@@ -62,6 +62,7 @@ MCP: `https://erx-mcp.zad.tools/mcp`
 | `get_live_data` | جلب مؤشر أو سجل حي مع الفترة والرابط ووقت الجلب |
 | `compare_live_data` | جمع سلاسل حية للمقارنة مع تحذير اختلاف المنهجيات |
 | `live_source_health` | فحص صحة مصادر البيانات الحية وحدود المعدل |
+| `get_coverage` | تغطية الأرشيف حسب الموضوع وصحة المصادر |
 
 يوفر السيرفر أيضًا موارد `egypt://sources` و`egypt://taxonomy` و`egypt://methodology`، بالإضافة إلى prompts للبحث المنظم والتحقق من الادعاءات.
 
@@ -100,7 +101,7 @@ http://127.0.0.1:8000/mcp
 
 Landing Page: `http://127.0.0.1:8000/`، واجهة الباحث: `/explore`،
 التوثيق: `/docs`، خريطة المعرفة: `/knowledge`، الـAPI:
-`/api/v1/openapi.json`، والبيانات الحية: `/api/v1/live/datasets` و`/api/v1/live/data?source=world-bank&indicator=SP.POP.TOTL&country=EGY`، وحالة الجاهزية: `/readyz`.
+`/api/v1/openapi.json`، والبيانات الحية: `/api/v1/live/datasets` و`/api/v1/live/data?source=world-bank&indicator=SP.POP.TOTL&country=EGY`، والتغطية: `/api/v1/coverage`، والحالة: `/api/v1/status`، وحالة الجاهزية: `/readyz`.
 
 تشغيله محليًا عبر stdio:
 

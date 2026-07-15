@@ -7,6 +7,7 @@ import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import { describe, expect, it } from "vitest";
 import { createWebServer } from "../src/web.js";
 import { ResearchStore } from "../src/store.js";
+import { TOOL_NAMES } from "../src/mcp.js";
 
 describe("Streamable HTTP", () => {
   it("negotiates MCP and exposes the stable tool set", async () => {
@@ -15,7 +16,7 @@ describe("Streamable HTTP", () => {
     const address = http.address(); if (!address || typeof address === "string") throw new Error("missing address");
     const client = new Client({ name: "http-test", version: "1.0.0" });
     await client.connect(new StreamableHTTPClientTransport(new URL(`http://127.0.0.1:${address.port}/mcp`)) as unknown as Transport);
-    expect((await client.listTools()).tools).toHaveLength(20);
+    expect((await client.listTools()).tools).toHaveLength(TOOL_NAMES.length);
     await client.close(); await new Promise<void>((resolve) => http.close(() => resolve())); store.close();
   });
 

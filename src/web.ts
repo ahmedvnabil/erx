@@ -29,6 +29,13 @@ export function createWebServer(store: ResearchStore, options: WebOptions = {}) 
     const requestId = randomUUID();
     securityHeaders(response, requestId, publicBaseUrl?.startsWith("https://") ?? false);
     const url = new URL(request.url ?? "/", `http://${request.headers.host ?? "127.0.0.1"}`);
+    if (url.pathname.startsWith("/api/v1/")) {
+      response.setHeader("access-control-allow-origin", "*");
+      response.setHeader("access-control-allow-methods", "GET, OPTIONS");
+      response.setHeader("access-control-allow-headers", "content-type, accept");
+      response.setHeader("access-control-expose-headers", "x-request-id, etag, cache-control");
+      if (request.method === "OPTIONS") { response.statusCode = 204; response.end(); return; }
+    }
     if (apiPaths.some((prefix) => url.pathname.startsWith(prefix)) && limited(request, limits, maximum, trustProxy)) {
       response.setHeader("retry-after", "60");
       json(response, 429, { error: { code: "rate_limited", request_id: requestId } });
@@ -65,6 +72,8 @@ async function route(store: ResearchStore, request: IncomingMessage, response: S
     const excluded = store.countExcludedDocuments();
     return json(response, 200, { status: "ok", documents, searchable_documents: documents - excluded, excluded_documents: excluded, sources: sources.length });
   }
+  if (path === "/status") return json(response, 200, wire({ status: "ok", version: (await import("./version.js")).VERSION, coverage: store.coverageReport(), checkedAt: new Date().toISOString() }));
+  if (path === "/coverage") return json(response, 200, wire(store.coverageReport()));
   if (path === "/readyz") return json(response, store.integrityCheck() === "ok" ? 200 : 503, { status: store.integrityCheck() === "ok" ? "ready" : "not_ready" });
   if (path === "/metrics") {
     const sources = store.listSources(); const runs = store.listCrawlRuns(undefined, 500);
@@ -120,7 +129,9 @@ async function route(store: ResearchStore, request: IncomingMessage, response: S
 
 async function api(store: ResearchStore, response: ServerResponse, url: URL): Promise<void> {
   const path = url.pathname;
-  if (path === "/api/v1/live/datasets") return json(response, 200, wire({ count: listLiveDatasets().length, datasets: listLiveDatasets() }));
+  if (path === "/api/v1/status") return json(response, 200, wire({ status: "ok", coverage: store.coverageReport(), checkedAt: new Date().toISOString() }));
+  if (path === "/api/v1/coverage") return json(response, 200, wire(store.coverageReport()));
+  if (path === "/api/v1/live/datasets") { response.setHeader("cache-control", "public, max-age=3600"); return json(response, 200, wire({ count: listLiveDatasets().length, datasets: listLiveDatasets() })); }
   if (path === "/api/v1/live/health") return json(response, 200, wire({ checkedAt: new Date().toISOString(), sources: await checkLiveSources() }));
   if (path === "/api/v1/live/data") {
     const rawSource = url.searchParams.get("source");
@@ -139,7 +150,7 @@ async function api(store: ResearchStore, response: ServerResponse, url: URL): Pr
       ...(url.searchParams.get("refugee_dimension") === "origin" || url.searchParams.get("refugee_dimension") === "asylum" ? { refugeeDimension: url.searchParams.get("refugee_dimension") as "origin" | "asylum" } : {}),
       ...(url.searchParams.get("flow_code") === "M" || url.searchParams.get("flow_code") === "X" || url.searchParams.get("flow_code") === "X,M" ? { flowCode: url.searchParams.get("flow_code") as "M" | "X" | "X,M" } : {})
     };
-    try { return json(response, 200, wire(await getLiveData(query))); }
+    try { response.setHeader("cache-control", "public, max-age=300, stale-while-revalidate=60"); return json(response, 200, wire(await getLiveData(query))); }
     catch (error) {
       const code = error instanceof Error && "code" in error ? String(error.code) : "live_source_error";
       const status = code === "rate_limited" ? 429 : code === "invalid_query" ? 422 : 502;
@@ -167,7 +178,7 @@ async function api(store: ResearchStore, response: ServerResponse, url: URL): Pr
   if (path === "/api/v1/events") { const events = store.listEvents(); return json(response, 200, wire({ count: events.length, events })); }
   if (path === "/api/v1/claims") { const claims = store.listClaims(); return json(response, 200, wire({ count: claims.length, claims })); }
   if (path === "/api/v1/saved-searches") { const savedSearches = store.listSavedSearches(); return json(response, 200, wire({ count: savedSearches.length, savedSearches })); }
-  if (path === "/api/v1/openapi.json") return json(response, 200, { openapi: "3.1.0", info: { title: "Egypt Research API", version: "1.1.0" }, paths: { "/api/v1/search": { get: { summary: "Search documents" } }, "/api/v1/documents/{document_id}": { get: { summary: "Get a source-backed document" } }, "/api/v1/sources": { get: { summary: "List research sources" } }, "/api/v1/entities": { get: { summary: "List extracted entities" } }, "/api/v1/events": { get: { summary: "List documented events" } }, "/api/v1/claims": { get: { summary: "List claims and evidence" } }, "/api/v1/saved-searches": { get: { summary: "List saved searches" } }, "/api/v1/live/datasets": { get: { summary: "List public live datasets" } }, "/api/v1/live/data": { get: { summary: "Query a public live dataset" } }, "/api/v1/live/health": { get: { summary: "Check live data source health" } } } });
+  if (path === "/api/v1/openapi.json") return json(response, 200, { openapi: "3.1.0", info: { title: "Egypt Research API", version: "1.2.0" }, paths: { "/api/v1/status": { get: { summary: "Service and archive status" } }, "/api/v1/coverage": { get: { summary: "Archive coverage by topic and source health" } }, "/api/v1/search": { get: { summary: "Search documents" } }, "/api/v1/documents/{document_id}": { get: { summary: "Get a source-backed document" } }, "/api/v1/sources": { get: { summary: "List research sources" } }, "/api/v1/entities": { get: { summary: "List extracted entities" } }, "/api/v1/events": { get: { summary: "List documented events" } }, "/api/v1/claims": { get: { summary: "List claims and evidence" } }, "/api/v1/saved-searches": { get: { summary: "List saved searches" } }, "/api/v1/live/datasets": { get: { summary: "List public live datasets" } }, "/api/v1/live/data": { get: { summary: "Query a public live dataset" } }, "/api/v1/live/health": { get: { summary: "Check live data source health" } } } });
   return json(response, 404, { error: { code: "not_found" } });
 }
 

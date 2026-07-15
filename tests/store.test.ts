@@ -144,4 +144,25 @@ describe("ResearchStore", () => {
     expect(store.listEvents({ limit: 10 })[0]?.documents).toHaveLength(2);
     store.close();
   });
+
+  it("clusters related coverage across independent source types", () => {
+    const store = new ResearchStore(join(mkdtempSync(join(tmpdir(), "egypt-cross-source-stories-")), "research.db"));
+    store.initialize();
+    store.upsertSource(source);
+    store.upsertSource({ ...source, slug: "official-source", name: "مصدر رسمي", sourceType: "official" });
+    const first = store.upsertDocument({
+      externalId: "cross-1", sourceSlug: source.slug, canonicalUrl: "https://example.com/cross/1",
+      title: "إطلاق برنامج دعم اللاجئين في مصر", content: "تقرير عن برنامج دعم اللاجئين في مصر.", publishedAt: "2026-07-14T10:00:00.000Z", topics: ["حقوق اللاجئين والمهاجرين"]
+    });
+    const second = store.upsertDocument({
+      externalId: "cross-2", sourceSlug: "official-source", canonicalUrl: "https://example.com/cross/2",
+      title: "الحكومة تعلن برنامجاً جديداً للاجئين", content: "بيان حكومي حول برنامج دعم اللاجئين.", publishedAt: "2026-07-15T10:00:00.000Z", topics: ["حقوق اللاجئين والمهاجرين"]
+    });
+    store.assignStory(first.documentId);
+    store.assignStory(second.documentId);
+    const story = store.listStories(10).find((item) => item["documentCount"] === 2);
+    expect(story?.["sourceCount"]).toBe(2);
+    expect(story?.["independent"]).toBe(true);
+    store.close();
+  });
 });

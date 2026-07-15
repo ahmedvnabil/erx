@@ -13,7 +13,7 @@ export const TOOL_NAMES = [
   "search_egypt", "get_document", "build_timeline", "compare_sources", "get_source_profile",
   "list_sources", "get_daily_brief", "list_stories", "export_references", "hybrid_search",
   "research_dossier", "find_entities", "list_events", "trace_claim", "compare_claims", "save_research_query"
-  , "list_live_datasets", "get_live_data", "compare_live_data", "live_source_health"
+  , "list_live_datasets", "get_live_data", "compare_live_data", "live_source_health", "get_coverage"
 ] as const;
 
 export const METHODOLOGY = {
@@ -223,6 +223,8 @@ export function createMcpServer(store: ResearchStore, options: McpOptions = {}):
     catch (error) { return toolError("live_health_error", error instanceof Error ? error.message : String(error)); }
   });
 
+  server.registerTool("get_coverage", { description: "عرض تغطية الأرشيف حسب الموضوع وصحة المصادر وعدد الوثائق القابلة للبحث.", inputSchema: {}, annotations: readOnly }, () => toolResult(store.coverageReport()));
+
   server.registerTool("save_research_query", { description: "حفظ استعلام بحثي محلي لإعادة تشغيله ومتابعته لاحقًا. الكتابة معطلة في نقطة MCP العامة.", inputSchema: { name: z.string().min(2).max(200), query: z.string().min(2).max(1000) }, annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false } }, ({ name, query }) => {
     if (options.allowWrites === false) return { ...toolResult({ ok: false, error: { code: "remote_writes_disabled" } }), isError: true };
     return toolResult({ ok: true, savedSearch: store.saveSearch(name, query) });
@@ -233,6 +235,7 @@ export function createMcpServer(store: ResearchStore, options: McpOptions = {}):
   jsonResource("egypt://taxonomy", () => TOPICS);
   jsonResource("egypt://methodology", () => METHODOLOGY);
   jsonResource("egypt://live-datasets", () => listLiveDatasets());
+  jsonResource("egypt://coverage", () => store.coverageReport());
   server.registerResource("source-profile", new ResourceTemplate("egypt://source/{slug}", { list: undefined }), { mimeType: "application/json" }, async (uri, variables) => ({ contents: [{ uri: uri.href, mimeType: "application/json", text: JSON.stringify(toSnake(store.getSource(String(variables["slug"])) ?? { error: "source_not_found" }), null, 2) }] }));
 
   server.registerPrompt("research_brief", { description: "خطة موجز بحثي موثق ومتوازن عن موضوع مصري.", argsSchema: { topic: z.string().min(1), date_from: z.string().optional(), date_to: z.string().optional() } }, async ({ topic, date_from, date_to }) => ({ messages: [{ role: "user", content: { type: "text", text: `ابحث عن: ${topic}. الفترة: ${date_from || "غير محددة"} إلى ${date_to || "الآن"}. ابدأ بالوثائق الأولية، ثم قارن المصادر الرسمية والإعلامية والحقوقية، وابنِ خطًا زمنيًا. ضع رابطًا وتاريخًا بجانب كل ادعاء، واذكر فجوات الأدلة.` } }] }));

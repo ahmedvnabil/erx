@@ -18,6 +18,9 @@ export interface LiveDatasetDescriptor {
   baseUrl: string;
   auth: "none";
   freshness: string;
+  updateFrequency: string;
+  geography: string[];
+  status: "active" | "preview";
   license: string;
   coverage: string[];
   notes: string[];
@@ -88,6 +91,9 @@ const DESCRIPTORS: readonly LiveDatasetDescriptor[] = [
     baseUrl: "https://api.worldbank.org/v2",
     auth: "none",
     freshness: "حسب المؤشر، سنوي أو ربع سنوي",
+    updateFrequency: "سنوي/ربع سنوي حسب المؤشر",
+    geography: ["EGY", "العالم"],
+    status: "active",
     license: "World Bank data terms; attribution required",
     coverage: ["الاقتصاد", "السكان", "الفقر", "التعليم", "الصحة", "التنمية"],
     notes: ["ISO3 country code: EGY", "JSON API بدون مفتاح"]
@@ -100,6 +106,9 @@ const DESCRIPTORS: readonly LiveDatasetDescriptor[] = [
     baseUrl: "https://www.imf.org/external/datamapper/api/v1",
     auth: "none",
     freshness: "حسب مجموعة المؤشر",
+    updateFrequency: "سنوي/توقعات دورية",
+    geography: ["EGY", "العالم"],
+    status: "active",
     license: "IMF data terms; attribution required",
     coverage: ["الناتج", "التضخم", "الدين", "المالية العامة", "التوقعات"],
     notes: ["ISO3 country code: EGY", "الإصدار الحالي v2 وبدون مفتاح"]
@@ -112,6 +121,9 @@ const DESCRIPTORS: readonly LiveDatasetDescriptor[] = [
     baseUrl: "https://ghoapi.azureedge.net/api",
     auth: "none",
     freshness: "حسب المؤشر",
+    updateFrequency: "حسب تحديث WHO للمؤشر",
+    geography: ["EGY", "العالم"],
+    status: "active",
     license: "WHO data terms; attribution required",
     coverage: ["الصحة العامة", "الأمراض", "الوفيات", "العمر المتوقع", "النظم الصحية"],
     notes: ["OData filters supported", "ISO3 country code: EGY"]
@@ -124,6 +136,9 @@ const DESCRIPTORS: readonly LiveDatasetDescriptor[] = [
     baseUrl: "https://api.unhcr.org/population/v1",
     auth: "none",
     freshness: "سنوي، مع nowcasting عند توفره",
+    updateFrequency: "سنوي",
+    geography: ["EGY", "بلدان الأصل واللجوء"],
+    status: "active",
     license: "UNHCR data terms; confidentiality safeguards apply",
     coverage: ["اللاجئون", "طالبو اللجوء", "النازحون", "الحلول الدائمة", "الديموغرافيا"],
     notes: ["يمكن البحث حسب بلد الأصل أو اللجوء", "لا يعرض بيانات شخصية"]
@@ -136,6 +151,9 @@ const DESCRIPTORS: readonly LiveDatasetDescriptor[] = [
     baseUrl: "https://api.crossref.org",
     auth: "none",
     freshness: "بعد إيداع الناشر عادة خلال دقائق",
+    updateFrequency: "شبه فوري",
+    geography: ["مصر والعالم"],
+    status: "active",
     license: "Crossref metadata reuse terms",
     coverage: ["الأبحاث", "DOI", "المؤلفون", "المجلات", "التمويل", "التصحيحات"],
     notes: ["بحث ببليوجرافي عام بدون تسجيل", "النص الكامل لا يأتي من Crossref"]
@@ -148,6 +166,9 @@ const DESCRIPTORS: readonly LiveDatasetDescriptor[] = [
     baseUrl: "https://comtradeapi.un.org/public/v1/preview",
     auth: "none",
     freshness: "حسب نشر بيانات التجارة",
+    updateFrequency: "شهري/سنوي حسب السلسلة",
+    geography: ["EGY", "الشركاء التجاريون"],
+    status: "preview",
     license: "UN Comtrade terms; preview and fair-use limits apply",
     coverage: ["الواردات", "الصادرات", "الشركاء التجاريون", "السلع"],
     notes: ["نستخدم preview العام فقط", "البيانات الكاملة والتحميلات الكبيرة قد تتطلب اشتراكًا"]
@@ -164,6 +185,23 @@ const DEFAULT_INDICATORS: Record<LiveSourceSlug, string> = {
 };
 
 const UNHCR_COUNTRY_CODES: Record<string, string> = { EGY: "ARE" };
+
+const LIVE_CACHE_TTL_MS = 5 * 60_000;
+const LIVE_CACHE = new Map<string, { body: unknown; status: number; url: string; expiresAt: number }>();
+const HEALTH_CACHE_TTL_MS = 60_000;
+let healthCache: { results: LiveSourceHealth[]; expiresAt: number } | undefined;
+const FETCHER_IDS = new WeakMap<object, number>();
+let nextFetcherId = 1;
+
+function fetcherId(fetcher: Fetcher): string {
+  if (fetcher === fetch) return "default";
+  const object = fetcher as unknown as object;
+  const existing = FETCHER_IDS.get(object);
+  if (existing) return String(existing);
+  const id = nextFetcherId++;
+  FETCHER_IDS.set(object, id);
+  return String(id);
+}
 
 export function listLiveDatasets(): LiveDatasetDescriptor[] {
   return DESCRIPTORS.map((descriptor) => ({ ...descriptor, coverage: [...descriptor.coverage], notes: [...descriptor.notes] }));
@@ -200,18 +238,42 @@ function year(value: string | undefined, label: string): string | undefined {
 }
 
 async function fetchJson(url: URL, fetcher: Fetcher): Promise<{ body: unknown; status: number; url: string }> {
-  let response: Response;
-  try {
-    response = await fetcher(url, { headers: { accept: "application/json", "user-agent": "ERX-Egypt-Research/0.15 (+https://erx-mcp.zad.tools)" }, signal: AbortSignal.timeout(15_000) });
-  } catch (error) {
-    throw new LiveDataError("upstream_error", error instanceof Error ? error.message : String(error));
+  const cacheKey = `${fetcherId(fetcher)}:${url.toString()}`;
+  if (fetcher === fetch) {
+    const cached = LIVE_CACHE.get(cacheKey);
+    if (cached && cached.expiresAt > Date.now()) return cached;
+    if (cached) LIVE_CACHE.delete(cacheKey);
   }
-  if (response.status === 429) throw new LiveDataError("rate_limited", "Live source rate limit reached", 429);
+  let response: Response;
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      response = await fetcher(url, { headers: { accept: "application/json", "user-agent": "ERX-Egypt-Research/0.15 (+https://erx-mcp.zad.tools)" }, signal: AbortSignal.timeout(15_000) });
+      if (response.status === 429 || response.status >= 500) {
+        if (response.status === 429) throw new LiveDataError("rate_limited", "Live source rate limit reached", 429);
+        throw new LiveDataError("upstream_error", `Live source returned HTTP ${response.status}`, response.status);
+      }
+      break;
+    } catch (error) {
+      lastError = error;
+      if (error instanceof LiveDataError && error.code === "rate_limited") throw error;
+      if (attempt === 2) throw new LiveDataError("upstream_error", error instanceof Error ? error.message : String(error));
+      await new Promise((resolve) => setTimeout(resolve, 150 * (attempt + 1)));
+    }
+  }
+  if (!response!) throw new LiveDataError("upstream_error", lastError instanceof Error ? lastError.message : String(lastError));
   if (!response.ok) throw new LiveDataError("upstream_error", `Live source returned HTTP ${response.status}`, response.status);
   let body: unknown;
   try { body = await response.json(); }
   catch { throw new LiveDataError("invalid_response", "Live source returned invalid JSON", response.status); }
-  return { body, status: response.status, url: url.toString() };
+  const result = { body, status: response.status, url: url.toString() };
+  if (fetcher === fetch) LIVE_CACHE.set(cacheKey, { ...result, expiresAt: Date.now() + LIVE_CACHE_TTL_MS });
+  return result;
+}
+
+export function clearLiveDataCache(): void {
+  LIVE_CACHE.clear();
+  healthCache = undefined;
 }
 
 function observation(source: LiveSourceSlug, dataset: string, indicator: string, period: string | null, countryCode: string | null, value: string | number | null, unit: string | null, dimensions: Record<string, string | number | null>, sourceUrl: string, retrievedAt: string): LiveObservation {
@@ -342,6 +404,7 @@ export async function compareLiveData(queries: LiveQuery[], fetcher: Fetcher = f
 }
 
 export async function checkLiveSources(fetcher: Fetcher = fetch): Promise<LiveSourceHealth[]> {
+  if (fetcher === fetch && healthCache && healthCache.expiresAt > Date.now()) return healthCache.results.map((result) => ({ ...result }));
   const results: LiveSourceHealth[] = [];
   for (const descriptor of DESCRIPTORS) {
     const started = Date.now(); const checkedAt = new Date().toISOString();
@@ -353,5 +416,6 @@ export async function checkLiveSources(fetcher: Fetcher = fetch): Promise<LiveSo
       results.push({ source: descriptor.slug, status: liveError?.code === "rate_limited" ? "rate_limited" : "unavailable", httpStatus: liveError?.status ?? null, checkedAt, latencyMs: Date.now() - started, message: liveError?.message ?? String(error) });
     }
   }
+  if (fetcher === fetch) healthCache = { results: results.map((result) => ({ ...result })), expiresAt: Date.now() + HEALTH_CACHE_TTL_MS };
   return results;
 }

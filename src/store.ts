@@ -383,27 +383,35 @@ export class ResearchStore {
     return stories.map((story) => ({
       id: asNumber(story["id"]), title: asString(story["title"]), firstSeenAt: asString(story["first_seen_at"]),
       lastSeenAt: asString(story["last_seen_at"]), documentCount: asNumber(story["document_count"]), sourceCount: asNumber(story["source_count"]),
-      documents: (this.db.prepare(`SELECT d.id, d.title, d.canonical_url, d.published_at, s.slug AS source_slug, s.name AS source_name
+      sourceTypes: [...new Set((this.db.prepare(`SELECT DISTINCT s.source_type FROM story_documents sd JOIN documents d ON d.id=sd.document_id JOIN sources s ON s.id=d.source_id
+        WHERE sd.story_id=? AND d.document_type != 'excluded'`).all(story["id"] as number) as Row[]).map((row) => asString(row["source_type"])))],
+      independent: asNumber(story["source_count"]) > 1,
+      documents: (this.db.prepare(`SELECT d.id, d.title, d.canonical_url, d.published_at, s.slug AS source_slug, s.name AS source_name, s.source_type
         FROM story_documents sd JOIN documents d ON d.id=sd.document_id JOIN sources s ON s.id=d.source_id
         WHERE sd.story_id=? AND d.document_type != 'excluded' ORDER BY d.published_at DESC`).all(story["id"] as number) as Row[]).map((row) => ({ documentId: asNumber(row["id"]), sourceSlug: asString(row["source_slug"]), sourceName: asString(row["source_name"]), title: asString(row["title"]), canonicalUrl: asString(row["canonical_url"]), publishedAt: asNullableString(row["published_at"]) }))
     }));
   }
 
   assignStory(documentId: number, threshold = 0.3): number {
-    const document = this.db.prepare("SELECT title, document_type, COALESCE(published_at,archived_at) AS seen_at FROM documents WHERE id=?").get(documentId) as Row | undefined;
+    const document = this.db.prepare("SELECT title, topics_json, document_type, COALESCE(event_at,published_at,archived_at) AS seen_at FROM documents WHERE id=?").get(documentId) as Row | undefined;
     if (!document) throw new Error(`Unknown document: ${documentId}`);
     if (asString(document["document_type"]) === "excluded") return 0;
     const linked = this.db.prepare("SELECT story_id FROM story_documents WHERE document_id=?").get(documentId) as Row | undefined;
     if (linked) return asNumber(linked["story_id"]);
     const tokens = headlineTokens(asString(document["title"]));
-    const candidates = this.db.prepare("SELECT * FROM stories WHERE datetime(last_seen_at) BETWEEN datetime(?, '-30 days') AND datetime(?, '+30 days') ORDER BY last_seen_at DESC LIMIT 500").all(document["seen_at"] as string, document["seen_at"] as string) as Row[];
+    const documentTopics = new Set(parseJson<string[]>(document["topics_json"], []));
+    const candidates = this.db.prepare("SELECT st.*, GROUP_CONCAT(d.topics_json, '||') AS topic_groups FROM stories st JOIN story_documents sd ON sd.story_id=st.id JOIN documents d ON d.id=sd.document_id WHERE datetime(st.last_seen_at) BETWEEN datetime(?, '-45 days') AND datetime(?, '+45 days') GROUP BY st.id ORDER BY st.last_seen_at DESC LIMIT 500").all(document["seen_at"] as string, document["seen_at"] as string) as Row[];
     let best: Row | undefined;
     let score = threshold;
     for (const candidate of candidates) {
       const candidateTokens = new Set(parseJson<string[]>(candidate["tokens_json"], []));
       const shared = [...tokens].filter((token) => [...candidateTokens].some((candidateToken) => relatedToken(token, candidateToken))).length;
-      const candidateScore = tokenSetSimilarity(tokens, candidateTokens, shared);
-      if (shared >= 2 && candidateScore >= score) { best = candidate; score = candidateScore; }
+      const candidateTopics = new Set(asString(candidate["topic_groups"]).split("||").flatMap((group) => parseJson<string[]>(group, [])));
+      const topicOverlap = [...documentTopics].filter((topic) => candidateTopics.has(topic)).length;
+      const candidateScore = tokenSetSimilarity(tokens, candidateTokens, shared) + (topicOverlap > 0 ? 0.12 : 0);
+      const hasStrongLexicalMatch = shared >= 2 && candidateScore >= score;
+      const hasCrossSourceStyleMatch = shared >= 1 && topicOverlap > 0 && candidateScore >= Math.max(0.2, score * 0.75);
+      if (hasStrongLexicalMatch || hasCrossSourceStyleMatch) { best = candidate; score = candidateScore; }
     }
     const storyId = this.transaction(() => {
       if (best) {
@@ -488,6 +496,24 @@ export class ResearchStore {
   countExcludedDocuments(): number {
     const row = this.db.prepare("SELECT COUNT(*) AS count FROM documents WHERE document_type='excluded'").get() as Row;
     return asNumber(row["count"]);
+  }
+
+  coverageReport(): Row {
+    const sources = this.listSources();
+    const documents = this.db.prepare("SELECT id, topics_json FROM documents").all() as Row[];
+    const topicCounts = new Map<string, number>();
+    for (const document of documents) {
+      if (this.getDocument(Number(document["id"]))?.documentType === "excluded") continue;
+      for (const topic of parseJson<string[]>(document["topics_json"], [])) topicCounts.set(topic, (topicCounts.get(topic) ?? 0) + 1);
+    }
+    return {
+      documents: documents.length,
+      searchableDocuments: documents.length - this.countExcludedDocuments(),
+      excludedDocuments: this.countExcludedDocuments(),
+      sources: sources.length,
+      healthySources: sources.filter((source) => source.healthStatus === "healthy").length,
+      topicCounts: Object.fromEntries([...topicCounts.entries()].sort((left, right) => right[1] - left[1]))
+    };
   }
 
   pruneSources(allowedSlugs: Set<string>): { removed: number; retiredWithDocuments: number } {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getLiveData, listLiveDatasets, compareLiveData, type LiveQuery } from "../src/live-data.js";
+import { clearLiveDataCache, getLiveData, listLiveDatasets, compareLiveData, type LiveQuery } from "../src/live-data.js";
 
 function responder(body: unknown, status = 200): typeof fetch {
   return async () => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
@@ -11,6 +11,7 @@ describe("live data connectors", () => {
     expect(datasets.length).toBe(6);
     expect(datasets.every((dataset) => dataset.auth === "none")).toBe(true);
     expect(datasets.every((dataset) => !dataset.baseUrl.includes("token") && !dataset.baseUrl.includes("key"))).toBe(true);
+    expect(datasets.every((dataset) => dataset.updateFrequency && dataset.geography.length > 0)).toBe(true);
   });
 
   it("normalizes World Bank observations with provenance", async () => {
@@ -57,5 +58,18 @@ describe("live data connectors", () => {
     const result = await compareLiveData(queries, fetcher);
     expect(result.queries).toHaveLength(2);
     expect(result.warnings[0]).toContain("الوحدات");
+  });
+
+  it("retries transient upstream failures and keeps a short-lived cache for public fetches", async () => {
+    clearLiveDataCache();
+    let attempts = 0;
+    const flaky: typeof fetch = async () => {
+      attempts += 1;
+      if (attempts < 3) return new Response("busy", { status: 503 });
+      return new Response(JSON.stringify([{}, [{ date: "2024", value: 1 }]]), { status: 200 });
+    };
+    const result = await getLiveData({ source: "world-bank", indicator: "SP.POP.TOTL", country: "EGY" }, flaky);
+    expect(result.observations[0]?.value).toBe(1);
+    expect(attempts).toBe(3);
   });
 });
