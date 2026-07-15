@@ -202,7 +202,7 @@ function year(value: string | undefined, label: string): string | undefined {
 async function fetchJson(url: URL, fetcher: Fetcher): Promise<{ body: unknown; status: number; url: string }> {
   let response: Response;
   try {
-    response = await fetcher(url, { headers: { accept: "application/json" }, signal: AbortSignal.timeout(15_000) });
+    response = await fetcher(url, { headers: { accept: "application/json", "user-agent": "ERX-Egypt-Research/0.15 (+https://erx-mcp.zad.tools)" }, signal: AbortSignal.timeout(15_000) });
   } catch (error) {
     throw new LiveDataError("upstream_error", error instanceof Error ? error.message : String(error));
   }
