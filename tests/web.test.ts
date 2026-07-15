@@ -41,10 +41,11 @@ describe("web and REST", () => {
       fetch(`${base}/api/v1/search?q=${encodeURIComponent("قرار اقتصادي")}&mode=hybrid`), fetch(`${base}/healthz`), fetch(`${base}/api/v1/live/datasets`), fetch(`${base}/api/v1/status`), fetch(`${base}/api/v1/coverage`)
     ]);
     const landing = await home.text();
-    expect(landing).toContain("كل معلومة لها مصدر");
-    expect(landing).toContain("21 أداة MCP");
-    expect(landing).toContain('class="hero-visual"');
-    expect(landing).toContain('alt="أرشيف بحثي يربط الوثائق بمصادرها"');
+    expect(landing).toContain("ERX يجيب بالدليل.");
+    expect(landing).toContain("<strong>21</strong>");
+    expect(landing).toContain("أداة MCP");
+    expect(landing).toContain('class="mcp-console"');
+    expect(landing).toContain("ابحث داخل مصر");
     expect(landing).toContain("npx -y egypt-research-mcp serve --transport stdio");
     expect(landing).toContain(`${base}/mcp`);
     expect(landing).not.toContain("WHO IT IS FOR / 01");
@@ -67,7 +68,7 @@ describe("web and REST", () => {
     const paths = ["/en", "/docs", "/robots.txt", "/sitemap.xml", "/llms.txt", "/manifest.webmanifest", "/static/brand.svg", "/static/app.js", "/static/social-card.png", "/static/archive-atlas.webp"];
     const responses = await Promise.all(paths.map((path) => fetch(base + path)));
     expect(responses.every((response) => response.ok)).toBe(true);
-    expect(await responses[0]!.text()).toContain("Every claim needs a source");
+    expect(await responses[0]!.text()).toContain("ERX answers with evidence.");
     expect(await responses[1]!.text()).toContain("search_egypt");
     expect(await responses[2]!.text()).toContain("Sitemap:");
     expect(await responses[3]!.text()).toContain("<urlset");
