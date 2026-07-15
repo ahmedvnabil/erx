@@ -163,6 +163,7 @@ describe("ResearchStore", () => {
     const story = store.listStories(10).find((item) => item["documentCount"] === 2);
     expect(story?.["sourceCount"]).toBe(2);
     expect(story?.["independent"]).toBe(true);
+    expect(store.listStories(1)[0]?.["independent"]).toBe(true);
     store.close();
   });
 });
