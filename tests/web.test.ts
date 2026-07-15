@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { createWebServer, normalizePublicBaseUrl } from "../src/web.js";
 import { ResearchStore } from "../src/store.js";
+import { VERSION } from "../src/version.js";
 
 const open: Array<ReturnType<typeof createWebServer>> = [];
 afterEach(async () => { await Promise.all(open.splice(0).map((server) => new Promise<void>((resolve) => server.close(() => resolve())))); });
@@ -54,6 +55,8 @@ describe("web and REST", () => {
     expect(landing).not.toContain('class="mcp-stats"');
     expect(landing).toContain('property="og:title"');
     expect(landing).toContain('application/ld+json');
+    expect(landing).toContain(`/static/app.css?v=${VERSION}`);
+    expect(landing).toContain(`/static/app.js?v=${VERSION}`);
     expect(await explorer.text()).toContain("ابدأ البحث");
     expect(await search.text()).toContain("قرار اقتصادي مصري موثق");
     const body = await api.json() as { results: Array<{ citation: { url: string } }> };
