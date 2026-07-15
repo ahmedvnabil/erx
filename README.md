@@ -1,11 +1,11 @@
 # ERX — Egypt Research Commons
 
 <p align="center">
-  <img src="docs/media/erx-readme-hero.svg" alt="ERX — كل معلومة لها مصدر" width="100%">
+  <img src="docs/media/erx-gpu-hero.webp" alt="ERX — Egypt Research Commons" width="100%">
 </p>
 
 <p align="center">
-  <img src="docs/media/erx-mcp-loop.gif" alt="ERX MCP flow: ask, tools, cited evidence" width="960">
+  <img src="docs/media/erx-gpu-loop.gif" alt="ERX MCP flow: research with provenance" width="960">
 </p>
 
 **كل معلومة لها مصدر.** بحث عربي موثّق للشأن المصري للباحثين والصحفيين
