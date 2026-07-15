@@ -150,6 +150,7 @@ git push origin v0.8.0
 ```
 
 راجع [قائمة الإطلاق](docs/launch-checklist.md) و[حزمة محتوى الإطلاق](docs/launch-content.md).
+لنتائج الاختبار الحالية، راجع [تقرير QA للإصدار 0.16.0](docs/qa-report-0.16.0.md).
 
 ## إضافة المصدر إلى عميل MCP
 
