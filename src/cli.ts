@@ -37,7 +37,7 @@ const output = (payload: unknown): void => { process.stdout.write(`${typeof payl
 
 async function main(argv = process.argv.slice(2)): Promise<number> {
   const args = parse(argv);
-  if (!args.command || args.flags.has("help")) { output("Usage: egypt-research <init|seed|prune-sources|ingest|audit-sources|index|reclassify|rebuild-events|status|backup|verify-backup|restore|serve> [options]"); return args.command ? 0 : 2; }
+  if (!args.command || args.flags.has("help")) { output("Usage: egypt-research <init|seed|prune-sources|ingest|audit-sources|index|reclassify|rebuild-stories|rebuild-events|status|backup|verify-backup|restore|serve> [options]"); return args.command ? 0 : 2; }
   if (args.command === "verify-backup") { const input = value(args, "input"); output({ status: verifyBackup(input), backup: input }); return 0; }
   if (args.command === "backup") {
     const destination = value(args, "output", `backups/research-${new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z")}.db`);
@@ -64,6 +64,9 @@ async function main(argv = process.argv.slice(2)): Promise<number> {
   if (args.command === "reclassify") {
     const result = { ...store.reclassifyDocuments(), ...store.rebuildStories() };
     output({ status: "ok", ...result }); store.close(); return 0;
+  }
+  if (args.command === "rebuild-stories") {
+    output({ status: "ok", ...store.rebuildStories() }); store.close(); return 0;
   }
   if (args.command === "rebuild-events") {
     store.clearEvents();

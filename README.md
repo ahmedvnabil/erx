@@ -83,6 +83,7 @@ node dist/cli.js ingest --channel api
 node dist/cli.js audit-sources --concurrency 10
 node dist/cli.js index --provider local
 node dist/cli.js reclassify
+node dist/cli.js rebuild-stories
 node dist/cli.js rebuild-events
 node dist/cli.js status
 ```

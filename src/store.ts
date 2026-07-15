@@ -379,7 +379,7 @@ export class ResearchStore {
     const stories = this.db.prepare(`SELECT st.*, COUNT(sd.document_id) AS document_count, COUNT(DISTINCT d.source_id) AS source_count
       FROM stories st JOIN story_documents sd ON sd.story_id=st.id JOIN documents d ON d.id=sd.document_id
       WHERE d.document_type != 'excluded'
-      GROUP BY st.id ORDER BY st.last_seen_at DESC LIMIT ?`).all(clamp(limit, 1, 100)) as Row[];
+      GROUP BY st.id ORDER BY document_count DESC, source_count DESC, st.last_seen_at DESC LIMIT ?`).all(clamp(limit, 1, 100)) as Row[];
     return stories.map((story) => ({
       id: asNumber(story["id"]), title: asString(story["title"]), firstSeenAt: asString(story["first_seen_at"]),
       lastSeenAt: asString(story["last_seen_at"]), documentCount: asNumber(story["document_count"]), sourceCount: asNumber(story["source_count"]),
