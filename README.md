@@ -1,6 +1,12 @@
 # ERX — Egypt Research Commons
 
-![ERX — كل معلومة لها مصدر](docs/media/social-card.svg)
+<p align="center">
+  <img src="docs/media/erx-readme-hero.svg" alt="ERX — كل معلومة لها مصدر" width="100%">
+</p>
+
+<p align="center">
+  <img src="docs/media/erx-mcp-loop.gif" alt="ERX MCP flow: ask, tools, cited evidence" width="960">
+</p>
 
 **كل معلومة لها مصدر.** بحث عربي موثّق للشأن المصري للباحثين والصحفيين
 ووكلاء AI.
@@ -10,6 +16,9 @@
 
 **Production:** [erx-mcp.zad.tools](https://erx-mcp.zad.tools) ·
 MCP: `https://erx-mcp.zad.tools/mcp`
+
+> **الفكرة في لقطة واحدة:** سؤال من الباحث أو الوكيل → أدوات MCP متخصصة →
+> أدلة أصلية قابلة للتتبع.
 
 ## الإمكانات الحالية
 
