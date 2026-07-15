@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.15.0 — 2026-07-15
+
+- إضافة طبقة بيانات حية منظمة عبر REST وOData وواجهة preview العامة.
+- إضافة مصادر World Bank وIMF DataMapper وWHO GHO وUNHCR وCrossref وUN Comtrade Preview بدون Token في المسار العام.
+- إضافة أدوات `list_live_datasets` و`get_live_data` و`compare_live_data` و`live_source_health`.
+- إضافة REST endpoints للبيانات الحية تحت `/api/v1/live` مع provenance والترخيص والتحذيرات وحدود المعدل.
+
 ## 0.14.0 — 2026-07-15
 
 - تنظيف الكتالوج التشغيلي إلى 24 مصدرًا قابلًا للجمع فقط.

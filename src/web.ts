@@ -6,6 +6,7 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 
 import { exportResults, EXPORT_FORMATS, type ExportFormat } from "./exports.js";
+import { getLiveData, listLiveDatasets, checkLiveSources, LIVE_SOURCE_SLUGS, type LiveQuery, type LiveSourceSlug } from "./live-data.js";
 import { createMcpServer } from "./mcp.js";
 import { APP_JS, PRODUCT_CSS, brandSvg, docsView, landingView, llmsText, manifest, registryManifest, robots, sitemap, socialCardSvg, structuredData } from "./product.js";
 import { HybridRetriever } from "./retrieval.js";
@@ -96,7 +97,7 @@ async function route(store: ResearchStore, request: IncomingMessage, response: S
     response.setHeader("content-disposition", `attachment; filename="egypt-research.${format}"`);
     return text(response, 200, exportResults(store.search(query, { limit: 100 }), format as ExportFormat));
   }
-  if (path.startsWith("/api/v1/")) return api(store, response, url);
+  if (path.startsWith("/api/v1/")) return await api(store, response, url);
   if (path === "/mcp") {
     if (!includeMcp) return json(response, 404, { error: { code: "not_found" } });
     if (!validOrigin(request, baseUrl)) return jsonRpc(response, 403, -32000, "Origin not allowed");
@@ -117,8 +118,34 @@ async function route(store: ResearchStore, request: IncomingMessage, response: S
   return json(response, 404, { error: { code: "not_found" } });
 }
 
-function api(store: ResearchStore, response: ServerResponse, url: URL): void {
+async function api(store: ResearchStore, response: ServerResponse, url: URL): Promise<void> {
   const path = url.pathname;
+  if (path === "/api/v1/live/datasets") return json(response, 200, wire({ count: listLiveDatasets().length, datasets: listLiveDatasets() }));
+  if (path === "/api/v1/live/health") return json(response, 200, wire({ checkedAt: new Date().toISOString(), sources: await checkLiveSources() }));
+  if (path === "/api/v1/live/data") {
+    const rawSource = url.searchParams.get("source");
+    if (!rawSource || !LIVE_SOURCE_SLUGS.includes(rawSource as LiveSourceSlug)) return json(response, 422, { error: { code: "invalid_live_source" } });
+    const rawLimit = url.searchParams.get("limit"); const parsedLimit = rawLimit ? Number(rawLimit) : undefined;
+    if (parsedLimit !== undefined && (!Number.isInteger(parsedLimit) || parsedLimit < 1 || parsedLimit > 100)) return json(response, 422, { error: { code: "invalid_limit" } });
+    const query: LiveQuery = {
+      source: rawSource as LiveSourceSlug,
+      ...(url.searchParams.get("indicator") ? { indicator: url.searchParams.get("indicator")! } : {}),
+      ...(url.searchParams.get("query") ? { query: url.searchParams.get("query")! } : {}),
+      ...(url.searchParams.get("country") ? { country: url.searchParams.get("country")! } : {}),
+      ...(url.searchParams.get("period_from") ? { periodFrom: url.searchParams.get("period_from")! } : {}),
+      ...(url.searchParams.get("period_to") ? { periodTo: url.searchParams.get("period_to")! } : {}),
+      ...(url.searchParams.get("period") ? { period: url.searchParams.get("period")! } : {}),
+      ...(parsedLimit !== undefined ? { limit: parsedLimit } : {}),
+      ...(url.searchParams.get("refugee_dimension") === "origin" || url.searchParams.get("refugee_dimension") === "asylum" ? { refugeeDimension: url.searchParams.get("refugee_dimension") as "origin" | "asylum" } : {}),
+      ...(url.searchParams.get("flow_code") === "M" || url.searchParams.get("flow_code") === "X" || url.searchParams.get("flow_code") === "X,M" ? { flowCode: url.searchParams.get("flow_code") as "M" | "X" | "X,M" } : {})
+    };
+    try { return json(response, 200, wire(await getLiveData(query))); }
+    catch (error) {
+      const code = error instanceof Error && "code" in error ? String(error.code) : "live_source_error";
+      const status = code === "rate_limited" ? 429 : code === "invalid_query" ? 422 : 502;
+      return json(response, status, { error: { code, message: error instanceof Error ? error.message : String(error) } });
+    }
+  }
   if (path === "/api/v1/search") {
     const query = (url.searchParams.get("q") ?? "").trim();
     if (query.length < 2 || query.length > 1_000) return json(response, 422, { error: { code: "invalid_query" } });
@@ -140,7 +167,7 @@ function api(store: ResearchStore, response: ServerResponse, url: URL): void {
   if (path === "/api/v1/events") { const events = store.listEvents(); return json(response, 200, wire({ count: events.length, events })); }
   if (path === "/api/v1/claims") { const claims = store.listClaims(); return json(response, 200, wire({ count: claims.length, claims })); }
   if (path === "/api/v1/saved-searches") { const savedSearches = store.listSavedSearches(); return json(response, 200, wire({ count: savedSearches.length, savedSearches })); }
-  if (path === "/api/v1/openapi.json") return json(response, 200, { openapi: "3.1.0", info: { title: "Egypt Research API", version: "1.0.0" }, paths: { "/api/v1/search": { get: { summary: "Search documents" } }, "/api/v1/documents/{document_id}": { get: { summary: "Get a source-backed document" } }, "/api/v1/sources": { get: { summary: "List research sources" } }, "/api/v1/entities": { get: { summary: "List extracted entities" } }, "/api/v1/events": { get: { summary: "List documented events" } }, "/api/v1/claims": { get: { summary: "List claims and evidence" } }, "/api/v1/saved-searches": { get: { summary: "List saved searches" } } } });
+  if (path === "/api/v1/openapi.json") return json(response, 200, { openapi: "3.1.0", info: { title: "Egypt Research API", version: "1.1.0" }, paths: { "/api/v1/search": { get: { summary: "Search documents" } }, "/api/v1/documents/{document_id}": { get: { summary: "Get a source-backed document" } }, "/api/v1/sources": { get: { summary: "List research sources" } }, "/api/v1/entities": { get: { summary: "List extracted entities" } }, "/api/v1/events": { get: { summary: "List documented events" } }, "/api/v1/claims": { get: { summary: "List claims and evidence" } }, "/api/v1/saved-searches": { get: { summary: "List saved searches" } }, "/api/v1/live/datasets": { get: { summary: "List public live datasets" } }, "/api/v1/live/data": { get: { summary: "Query a public live dataset" } }, "/api/v1/live/health": { get: { summary: "Check live data source health" } } } });
   return json(response, 404, { error: { code: "not_found" } });
 }
 

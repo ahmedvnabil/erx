@@ -6,7 +6,7 @@
 
 طبقة بحث مفتوحة تجمع مصادر مصرية رسمية وقانونية وحقوقية وإخبارية وأكاديمية، وتُعيد كل نتيجة مع رابطها وتاريخها وسياق مصدرها.
 
-يمكن للباحث استخدامها من الويب، ويمكن لوكلاء AI الوصول إليها عبر 15 أداة MCP: بحث هجين، مقارنة مصادر، خطوط زمنية، تتبع ادعاءات، وتصدير مراجع.
+يمكن للباحث استخدامها من الويب، ويمكن لوكلاء AI الوصول إليها عبر 20 أداة MCP، منها بحث هجين ومقارنة مصادر وبيانات حية وموثقة.
 
 الفكرة بسيطة: كل معلومة لها مصدر.
 
@@ -16,7 +16,7 @@
 
 1. معظم إجابات AI عن الشأن المصري تبدأ من النص وتنتهي قبل المصدر. بنينا ERX لقلب المعادلة: كل نتيجة تبدأ من وثيقة أصلية.
 2. ERX يجمع مصادر رسمية وقانونية وحقوقية وإخبارية وأكاديمية في فهرس واحد، مع تاريخ النشر والأرشفة وملكية المصدر.
-3. للباحث: بحث، مقارنة، خط زمني، وتصدير RIS/BibTeX. للوكيل: 15 أداة MCP عبر stdio أو Streamable HTTP.
+3. للباحث: بحث، مقارنة، خط زمني، مؤشرات حية، وتصدير RIS/BibTeX. للوكيل: 20 أداة MCP عبر stdio أو Streamable HTTP.
 4. ERX لا يمنح «درجة حقيقة» للمصادر، ولا يعتبر تكرار الادعاء تحققًا مستقلًا. هو يجعل الدليل قابلًا للفحص.
 5. المشروع مفتوح المصدر. جرّبه، افتح Issue بمصدر ناقص، أو ساهم في تحسين جامع موجود.
 
@@ -26,7 +26,7 @@ AI can answer a question about Egypt in seconds. Verifying where the answer came
 
 We built ERX — Egypt Research Commons — to make provenance part of the interface, not an afterthought.
 
-ERX indexes Egyptian official, legal, human-rights, news, academic and statistical sources. Every result carries its original URL, publisher context and dates. Researchers can search and export references; AI agents can use the same archive through fourteen MCP tools.
+ERX indexes Egyptian official, legal, human-rights, news, academic and statistical sources, and exposes public live indicators through REST/OData connectors. Every result carries its original URL, publisher context and dates. Researchers can search and export references; AI agents can use the same archive and live data through twenty MCP tools.
 
 The product deliberately does not assign automatic truth scores. Source ownership is context, repetition is not independent confirmation, and primary documents remain the preferred evidence.
 

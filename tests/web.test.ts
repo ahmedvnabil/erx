@@ -36,13 +36,13 @@ describe("web and REST", () => {
 
   it("serves the Arabic product landing, explorer, health, and source-backed REST", async () => {
     const { base } = await fixture();
-    const [home, explorer, search, api, health] = await Promise.all([
+    const [home, explorer, search, api, health, liveDatasets] = await Promise.all([
       fetch(base), fetch(`${base}/explore`), fetch(`${base}/search?q=${encodeURIComponent("قرار اقتصادي")}`),
-      fetch(`${base}/api/v1/search?q=${encodeURIComponent("قرار اقتصادي")}&mode=hybrid`), fetch(`${base}/healthz`)
+      fetch(`${base}/api/v1/search?q=${encodeURIComponent("قرار اقتصادي")}&mode=hybrid`), fetch(`${base}/healthz`), fetch(`${base}/api/v1/live/datasets`)
     ]);
     const landing = await home.text();
     expect(landing).toContain("كل معلومة لها مصدر");
-    expect(landing).toContain("16 أداة MCP");
+    expect(landing).toContain("20 أداة MCP");
     expect(landing).toContain('class="hero-visual"');
     expect(landing).toContain('alt="أرشيف بحثي يربط الوثائق بمصادرها"');
     expect(landing).toContain("npx -y egypt-research-mcp serve --transport stdio");
@@ -56,6 +56,7 @@ describe("web and REST", () => {
     const body = await api.json() as { results: Array<{ citation: { url: string } }> };
     expect(body.results[0]?.citation.url).toBe("https://example.org/decision/1");
     expect(await health.json()).toEqual(expect.objectContaining({ status: "ok", documents: 1, searchable_documents: 1, excluded_documents: 0 }));
+    expect(await liveDatasets.json()).toEqual(expect.objectContaining({ count: 6, datasets: expect.any(Array) }));
   });
 
   it("serves launch, discovery, brand, and bilingual documentation surfaces", async () => {

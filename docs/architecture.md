@@ -21,6 +21,7 @@ SQLite FTS5 + vectors (نسخة واحدة)
   │
   ├── واجهة عربية وREST API
   ├── MCP tools/resources/prompts
+  ├── Live Data connectors (REST / OData / preview REST)
   └── تصدير وبحوث محفوظة
 ```
 
@@ -31,7 +32,16 @@ SQLite FTS5 + vectors (نسخة واحدة)
 - `knowledge.ts`: استخراج حتمي قابل للمراجعة، مع إثراء AI اختياري.
 - `store.ts`: كتابة ذرية واستعلامات parameterized وحفظ الإصدارات.
 - `mcp.ts` و`web.ts`: MCP وREST وواجهة الباحث فوق مخزن واحد.
+- `live-data.ts`: موصلات قراءة مباشرة لا تكتب في الأرشيف ولا تحتاج مفاتيح في المسار العام؛ كل نتيجة تحمل رابط الاستعلام ووقت الجلب والترخيص والتحذيرات.
 - `views.ts`: عرض escaped فقط، ولا يعرض HTML خامًا من المصادر.
+
+## البيانات الحية
+
+تفصل ERX بين الوثيقة المؤرشفة والملاحظة الحية. الموصلات الحالية هي World Bank
+وIMF DataMapper وWHO GHO وUNHCR وCrossref وUN Comtrade Preview. تُعاد الملاحظة
+بشكل موحد: `source`, `dataset`, `indicator`, `period`, `value`, `unit`,
+`dimensions`, `source_url`, `retrieved_at`, و`license`. لا تُعامل البيانات الحية
+كحقيقة تحريرية؛ تبقى منهجية المصدر ووحدته وفترة تحديثه ظاهرة للمستخدم.
 
 ## البحث الهجين
 

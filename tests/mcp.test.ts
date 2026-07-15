@@ -49,7 +49,8 @@ describe("MCP contract", () => {
       ["export_references", { query: "قرار اقتصادي", format: "ris" }], ["hybrid_search", { query: "قرار اقتصادي", source_types: ["official"], date_from: "2026-01-01" }],
       ["research_dossier", { query: "قرار اقتصادي", source_types: ["official"], date_from: "2026-01-01" }],
       ["find_entities", { document_id: inserted.documentId }], ["list_events", { document_id: inserted.documentId }],
-      ["trace_claim", { claim_id: store.listClaims()[0]!.id }], ["compare_claims", { query: "قرار اقتصادي" }], ["save_research_query", { name: "اقتصاد مصر", query: "قرار اقتصادي" }]
+      ["trace_claim", { claim_id: store.listClaims()[0]!.id }], ["compare_claims", { query: "قرار اقتصادي" }],
+      ["list_live_datasets", {}], ["save_research_query", { name: "اقتصاد مصر", query: "قرار اقتصادي" }]
     ];
     for (const [name, arguments_] of calls) expect((await client.callTool({ name, arguments: arguments_ })).isError).not.toBe(true);
     const dossier = await client.callTool({ name: "research_dossier", arguments: { query: "قرار اقتصادي" } });
@@ -69,6 +70,9 @@ describe("MCP contract", () => {
     expect(sourceResource && "text" in sourceResource ? sourceResource.text : "").toContain("مصدر رسمي");
     expect((await client.getPrompt({ name: "research_brief", arguments: { topic: "الاقتصاد" } })).messages[0]?.content).toEqual(expect.objectContaining({ type: "text" }));
     expect((await client.getPrompt({ name: "verify_claim", arguments: { claim: "ادعاء" } })).messages).toHaveLength(1);
+    const liveDatasets = await client.callTool({ name: "list_live_datasets", arguments: {} });
+    expect(liveDatasets.isError).not.toBe(true);
+    expect(liveDatasets.structuredContent).toEqual(expect.objectContaining({ count: 6, datasets: expect.any(Array) }));
     await client.close(); await server.close(); store.close();
   });
 });

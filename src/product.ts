@@ -33,6 +33,10 @@ export const MCP_TOOL_DOCS = [
   ["trace_claim", "تتبع الادعاء إلى كل دليل", "claim_id", '{"claim_id":1}'],
   ["compare_claims", "تجميع الادعاءات المتشابهة ومقارنة المواقف", "query, limit?", '{"query":"ترحيل اللاجئين","limit":20}'],
   ["save_research_query", "حفظ استعلام متابعة محلي", "name, query", '{"name":"متابعة قانون العمل","query":"قانون العمل"}']
+  ,["list_live_datasets", "كتالوج REST/OData للبيانات الحية العامة", "بدون مدخلات", "list_live_datasets()"]
+  ,["get_live_data", "جلب مؤشر حي مع provenance وترخيص وتحذيرات", "source, indicator?, country?, period_from?, period_to?, limit?", '{"source":"world-bank","indicator":"SP.POP.TOTL","country":"EGY"}']
+  ,["compare_live_data", "جمع سلاسل حية للمقارنة دون إخفاء اختلاف المنهجيات", "queries[]", '{"queries":[{"source":"world-bank","indicator":"SP.POP.TOTL"},{"source":"imf-datamapper","indicator":"NGDP_RPCH"}]}']
+  ,["live_source_health", "اختبار صحة وإتاحة مصادر البيانات الحية", "بدون مدخلات", "live_source_health()"]
 ] as const;
 
 const fields = [
@@ -47,7 +51,12 @@ const fields = [
   ["match_reasons", "array", "lexical · semantic", "hybrid_search"],
   ["health_status", "enum", "healthy", "list_sources"],
   ["claim_text", "string", "نص الادعاء", "trace_claim"],
-  ["occurred_at", "datetime", "2026-07-14", "list_events"]
+  ["occurred_at", "datetime", "2026-07-14", "list_events"],
+  ["value", "number|string", "104000000", "get_live_data · compare_live_data"],
+  ["period", "year/date", "2025", "get_live_data"],
+  ["retrieved_at", "datetime", "2026-07-15T00:00:00Z", "get_live_data · live_source_health"],
+  ["source_url", "url", "https://api.worldbank.org/…", "get_live_data"],
+  ["license", "string", "World Bank data terms", "list_live_datasets · get_live_data"]
 ] as const;
 
 const PRODUCT_CSS_BASE = `
@@ -64,7 +73,7 @@ export function brandSvg(): string {
 }
 
 export function socialCardSvg(): string {
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630"><rect width="1200" height="630" fill="#090b0c"/><path d="M0 88h1200M0 542h1200" stroke="#303537"/><g transform="translate(72 70) scale(1.3)">${brandSvg().replace(/<svg[^>]*>|<\/svg>|<rect width="64" height="64" fill="#0A0C0D"\/>/g, "")}</g><text x="1120" y="170" fill="#57E389" font-size="28" font-family="monospace" text-anchor="end">EGYPT RESEARCH COMMONS / ERX</text><text x="1120" y="305" fill="#eef0e8" font-size="86" font-weight="900" font-family="Arial" text-anchor="end">كل معلومة لها مصدر</text><text x="1120" y="390" fill="#9ca3a8" font-size="34" font-family="Arial" text-anchor="end">بحث موثّق للشأن المصري — للإنسان والوكيل الذكي</text><g transform="translate(72 482)"><rect width="180" height="54" fill="#57E389"/><text x="90" y="36" fill="#071009" font-size="24" font-family="monospace" font-weight="900" text-anchor="middle">16 MCP TOOLS</text></g></svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630"><rect width="1200" height="630" fill="#090b0c"/><path d="M0 88h1200M0 542h1200" stroke="#303537"/><g transform="translate(72 70) scale(1.3)">${brandSvg().replace(/<svg[^>]*>|<\/svg>|<rect width="64" height="64" fill="#0A0C0D"\/>/g, "")}</g><text x="1120" y="170" fill="#57E389" font-size="28" font-family="monospace" text-anchor="end">EGYPT RESEARCH COMMONS / ERX</text><text x="1120" y="305" fill="#eef0e8" font-size="86" font-weight="900" font-family="Arial" text-anchor="end">كل معلومة لها مصدر</text><text x="1120" y="390" fill="#9ca3a8" font-size="34" font-family="Arial" text-anchor="end">بحث موثّق للشأن المصري — للإنسان والوكيل الذكي</text><g transform="translate(72 482)"><rect width="180" height="54" fill="#57E389"/><text x="90" y="36" fill="#071009" font-size="24" font-family="monospace" font-weight="900" text-anchor="middle">20 MCP TOOLS</text></g></svg>`;
 }
 
 function pageShell(content: string, options: { language: Language; title: string; description: string; path: string; baseUrl: string; chart?: boolean }): string {
@@ -103,8 +112,8 @@ export function landingView(sources: SourceRecord[], stories: Story[], baseUrl: 
     sources: "Many source types. One comparable context layer.", evidence: "The archive shows its limits before its results.", cta: "Start with a question. End with evidence."
   };
   const audiences = rtl
-    ? [["باحثون ومراكز دراسات", "خطوط زمنية ومقارنات واستشهادات قابلة للتصدير."], ["صحفيون ومدققون", "الوصول إلى أصل الادعاء ومقارنة إعادة النشر بالتأكيد المستقل."], ["فرق AI والبيانات", "16 أداة MCP وREST API فوق نفس قاعدة المعرفة."]]
-    : [["Researchers & policy teams", "Timelines, comparisons and references ready for export."], ["Journalists & investigators", "Trace claims to originals and separate repetition from independent confirmation."], ["AI & data teams", "Sixteen MCP tools and a REST API over the same knowledge layer."]];
+    ? [["باحثون ومراكز دراسات", "خطوط زمنية ومقارنات واستشهادات وبيانات حية قابلة للتصدير."], ["صحفيون ومدققون", "الوصول إلى أصل الادعاء ومقارنة إعادة النشر بالتأكيد المستقل."], ["فرق AI والبيانات", "20 أداة MCP وREST API فوق نفس طبقة الأدلة والبيانات الحية."]]
+    : [["Researchers & policy teams", "Timelines, comparisons, references and live indicators ready for export."], ["Journalists & investigators", "Trace claims to originals and separate repetition from independent confirmation."], ["AI & data teams", "Twenty MCP tools and a REST API over the same evidence and live-data layer."]];
   const install = `npx -y egypt-research-mcp serve --transport stdio`;
   const remote = `${baseUrl}/mcp`;
   const sourceTypes = sourceTypeCounts(sources);

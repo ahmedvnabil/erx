@@ -34,6 +34,7 @@ MCP: `https://erx-mcp.zad.tools/mcp`
 - واجهة عربية RTL تعمل دون حساب مستخدم.
 - Streamable HTTP للاستخدام البعيد وstdio للاستخدام المحلي.
 - REST API مستقرة تحت `/api/v1` مع وصف OpenAPI.
+- طبقة بيانات حية منظمة من World Bank وIMF وWHO وUNHCR وCrossref وUN Comtrade Preview، وكلها بدون Token في المسار العام.
 - readiness ومقاييس Prometheus وتحديد معدل ورؤوس أمان.
 - نسخ واستعادة SQLite متسقان مع فحص سلامة ونسخة أمان قبل الاستعادة.
 
@@ -57,6 +58,10 @@ MCP: `https://erx-mcp.zad.tools/mcp`
 | `trace_claim` | تتبع الادعاء إلى كل دليل ومصدر أورده |
 | `compare_claims` | تجميع الادعاءات المتشابهة ومقارنة مواقف المصادر |
 | `save_research_query` | حفظ استعلام متابعة محلي؛ معطلة في نقطة MCP العامة |
+| `list_live_datasets` | كتالوج مصادر REST/OData الحية العامة وترخيصها |
+| `get_live_data` | جلب مؤشر أو سجل حي مع الفترة والرابط ووقت الجلب |
+| `compare_live_data` | جمع سلاسل حية للمقارنة مع تحذير اختلاف المنهجيات |
+| `live_source_health` | فحص صحة مصادر البيانات الحية وحدود المعدل |
 
 يوفر السيرفر أيضًا موارد `egypt://sources` و`egypt://taxonomy` و`egypt://methodology`، بالإضافة إلى prompts للبحث المنظم والتحقق من الادعاءات.
 
@@ -95,7 +100,7 @@ http://127.0.0.1:8000/mcp
 
 Landing Page: `http://127.0.0.1:8000/`، واجهة الباحث: `/explore`،
 التوثيق: `/docs`، خريطة المعرفة: `/knowledge`، الـAPI:
-`/api/v1/openapi.json`، وحالة الجاهزية: `/readyz`.
+`/api/v1/openapi.json`، والبيانات الحية: `/api/v1/live/datasets` و`/api/v1/live/data?source=world-bank&indicator=SP.POP.TOTL&country=EGY`، وحالة الجاهزية: `/readyz`.
 
 تشغيله محليًا عبر stdio:
 

@@ -2,6 +2,7 @@ import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mc
 import * as z from "zod/v4";
 
 import { EXPORT_FORMATS, exportResults, type ExportFormat } from "./exports.js";
+import { checkLiveSources, compareLiveData, getLiveData, listLiveDatasets, LIVE_SOURCE_SLUGS, type LiveQuery } from "./live-data.js";
 import { HybridRetriever } from "./retrieval.js";
 import { TOPICS } from "./text.js";
 import type { ResearchStore } from "./store.js";
@@ -12,6 +13,7 @@ export const TOOL_NAMES = [
   "search_egypt", "get_document", "build_timeline", "compare_sources", "get_source_profile",
   "list_sources", "get_daily_brief", "list_stories", "export_references", "hybrid_search",
   "research_dossier", "find_entities", "list_events", "trace_claim", "compare_claims", "save_research_query"
+  , "list_live_datasets", "get_live_data", "compare_live_data", "live_source_health"
 ] as const;
 
 export const METHODOLOGY = {
@@ -40,6 +42,25 @@ function toSnake(value: unknown): unknown {
 function toolResult(payload: Record<string, unknown>) {
   const wire = toSnake(payload) as Record<string, unknown>;
   return { content: [{ type: "text" as const, text: JSON.stringify(wire, null, 2) }], structuredContent: wire };
+}
+
+function toolError(code: string, message: string) {
+  return { ...toolResult({ ok: false, error: { code, message } }), isError: true };
+}
+
+function liveQuery(input: { source: LiveQuery["source"]; indicator?: string | undefined; query?: string | undefined; country?: string | undefined; period_from?: string | undefined; period_to?: string | undefined; period?: string | undefined; limit?: number | undefined; refugee_dimension?: "origin" | "asylum" | undefined; flow_code?: "M" | "X" | "X,M" | undefined }): LiveQuery {
+  return {
+    source: input.source,
+    ...(input.indicator ? { indicator: input.indicator } : {}),
+    ...(input.query ? { query: input.query } : {}),
+    ...(input.country ? { country: input.country } : {}),
+    ...(input.period_from ? { periodFrom: input.period_from } : {}),
+    ...(input.period_to ? { periodTo: input.period_to } : {}),
+    ...(input.period ? { period: input.period } : {}),
+    ...(input.limit !== undefined ? { limit: input.limit } : {}),
+    ...(input.refugee_dimension ? { refugeeDimension: input.refugee_dimension } : {}),
+    ...(input.flow_code ? { flowCode: input.flow_code } : {})
+  };
 }
 
 function buildResearchDossier(store: ResearchStore, query: string, results: ReturnType<ResearchStore["search"]>) {
@@ -176,6 +197,32 @@ export function createMcpServer(store: ResearchStore, options: McpOptions = {}):
     return toolResult({ query, count: clusters.length, clusters });
   });
 
+  server.registerTool("list_live_datasets", { description: "عرض كتالوج البيانات الحية العامة التي تعمل بدون Token، مع البروتوكول والتغطية والترخيص.", inputSchema: {}, annotations: readOnly }, () => {
+    return toolResult({ count: listLiveDatasets().length, datasets: listLiveDatasets() });
+  });
+
+  const liveInputSchema = {
+    source: z.enum(LIVE_SOURCE_SLUGS), indicator: z.string().max(100).optional(), query: z.string().max(200).optional(), country: z.string().max(3).optional(),
+    period_from: z.string().optional(), period_to: z.string().optional(), period: z.string().optional(), limit: z.number().int().min(1).max(100).default(20),
+    refugee_dimension: z.enum(["origin", "asylum"]).optional(), flow_code: z.enum(["M", "X", "X,M"]).optional()
+  } as const;
+
+  server.registerTool("get_live_data", { description: "جلب بيانات مصر الحية من REST/OData مع قيمة المؤشر والفترة ورابط الاستعلام ووقت الجلب والتحذيرات.", inputSchema: liveInputSchema, annotations: readOnly }, async (input) => {
+    try { return toolResult(await getLiveData(liveQuery(input)) as unknown as Record<string, unknown>); }
+    catch (error) { return toolError(error instanceof Error && "code" in error ? String(error.code) : "live_source_error", error instanceof Error ? error.message : String(error)); }
+  });
+
+  const liveQuerySchema = z.object(liveInputSchema);
+  server.registerTool("compare_live_data", { description: "جمع سلسلتين إلى أربع سلاسل حية للمقارنة مع إبقاء اختلاف الوحدات والمنهجيات ظاهرًا.", inputSchema: { queries: z.array(liveQuerySchema).min(1).max(4) }, annotations: readOnly }, async ({ queries }) => {
+    try { return toolResult(await compareLiveData(queries.map((query) => liveQuery(query))) as unknown as Record<string, unknown>); }
+    catch (error) { return toolError(error instanceof Error && "code" in error ? String(error.code) : "live_source_error", error instanceof Error ? error.message : String(error)); }
+  });
+
+  server.registerTool("live_source_health", { description: "اختبار قابلية الوصول الحالية لمصادر البيانات الحية وتمييز السليم عن المحدد بالمعدل أو المتوقف.", inputSchema: {}, annotations: readOnly }, async () => {
+    try { return toolResult({ checkedAt: new Date().toISOString(), sources: await checkLiveSources() }); }
+    catch (error) { return toolError("live_health_error", error instanceof Error ? error.message : String(error)); }
+  });
+
   server.registerTool("save_research_query", { description: "حفظ استعلام بحثي محلي لإعادة تشغيله ومتابعته لاحقًا. الكتابة معطلة في نقطة MCP العامة.", inputSchema: { name: z.string().min(2).max(200), query: z.string().min(2).max(1000) }, annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false } }, ({ name, query }) => {
     if (options.allowWrites === false) return { ...toolResult({ ok: false, error: { code: "remote_writes_disabled" } }), isError: true };
     return toolResult({ ok: true, savedSearch: store.saveSearch(name, query) });
@@ -185,6 +232,7 @@ export function createMcpServer(store: ResearchStore, options: McpOptions = {}):
   jsonResource("egypt://sources", () => store.listSources());
   jsonResource("egypt://taxonomy", () => TOPICS);
   jsonResource("egypt://methodology", () => METHODOLOGY);
+  jsonResource("egypt://live-datasets", () => listLiveDatasets());
   server.registerResource("source-profile", new ResourceTemplate("egypt://source/{slug}", { list: undefined }), { mimeType: "application/json" }, async (uri, variables) => ({ contents: [{ uri: uri.href, mimeType: "application/json", text: JSON.stringify(toSnake(store.getSource(String(variables["slug"])) ?? { error: "source_not_found" }), null, 2) }] }));
 
   server.registerPrompt("research_brief", { description: "خطة موجز بحثي موثق ومتوازن عن موضوع مصري.", argsSchema: { topic: z.string().min(1), date_from: z.string().optional(), date_to: z.string().optional() } }, async ({ topic, date_from, date_to }) => ({ messages: [{ role: "user", content: { type: "text", text: `ابحث عن: ${topic}. الفترة: ${date_from || "غير محددة"} إلى ${date_to || "الآن"}. ابدأ بالوثائق الأولية، ثم قارن المصادر الرسمية والإعلامية والحقوقية، وابنِ خطًا زمنيًا. ضع رابطًا وتاريخًا بجانب كل ادعاء، واذكر فجوات الأدلة.` } }] }));
