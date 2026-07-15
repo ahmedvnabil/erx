@@ -42,12 +42,15 @@ describe("web and REST", () => {
       fetch(`${base}/api/v1/search?q=${encodeURIComponent("قرار اقتصادي")}&mode=hybrid`), fetch(`${base}/healthz`), fetch(`${base}/api/v1/live/datasets`), fetch(`${base}/api/v1/status`), fetch(`${base}/api/v1/coverage`)
     ]);
     const landing = await home.text();
-    expect(landing).toContain("كل إجابة تبدأ من أثر.");
-    expect(landing).toContain('class="evidence-ledger"');
-    expect(landing).toContain('class="archive-ticker"');
-    expect(landing).toContain("أداة MCP");
-    expect(landing).toContain('class="trace-sample"');
-    expect(landing).toContain("ابحث داخل مصر");
+    expect(landing).toContain("ابحث في مصر.");
+    expect(landing).toContain("وثّق إجابتك.");
+    expect(landing).toContain('class="archive-hero product-shell"');
+    expect(landing).toContain('class="archive-stats"');
+    expect(landing).toContain("أداة بحث");
+    expect(landing).toContain('class="source-proof product-shell archive-reveal"');
+    expect(landing).toContain("ابحث بمرونة");
+    expect(landing).toContain('/static/research-desk.webp');
+    expect(landing).toContain('/static/archive-care.webp');
     expect(landing).toContain("npx -y egypt-research-mcp serve --transport stdio");
     expect(landing).toContain(`${base}/mcp`);
     expect(landing).not.toContain("WHO IT IS FOR / 01");
@@ -55,8 +58,8 @@ describe("web and REST", () => {
     expect(landing).not.toContain('class="mcp-stats"');
     expect(landing).toContain('property="og:title"');
     expect(landing).toContain('application/ld+json');
-    expect(landing).toContain(`/static/app.css?v=${VERSION}`);
-    expect(landing).toContain(`/static/app.js?v=${VERSION}`);
+    expect(landing).toContain(`/static/app.css?v=${VERSION}-taste3`);
+    expect(landing).toContain(`/static/app.js?v=${VERSION}-taste3`);
     expect(await explorer.text()).toContain("ابدأ البحث");
     expect(await search.text()).toContain("قرار اقتصادي مصري موثق");
     const body = await api.json() as { results: Array<{ citation: { url: string } }> };
@@ -70,10 +73,10 @@ describe("web and REST", () => {
 
   it("serves launch, discovery, brand, and bilingual documentation surfaces", async () => {
     const { base } = await fixture();
-    const paths = ["/en", "/docs", "/robots.txt", "/sitemap.xml", "/llms.txt", "/manifest.webmanifest", "/static/brand.svg", "/static/app.js", "/static/social-card.png", "/static/archive-atlas.webp"];
+    const paths = ["/en", "/docs", "/robots.txt", "/sitemap.xml", "/llms.txt", "/manifest.webmanifest", "/static/brand.svg", "/static/app.js", "/static/social-card.png", "/static/archive-atlas.webp", "/static/research-desk.webp", "/static/archive-care.webp", "/static/readex-pro-ar.woff2"];
     const responses = await Promise.all(paths.map((path) => fetch(base + path)));
     expect(responses.every((response) => response.ok)).toBe(true);
-    expect(await responses[0]!.text()).toContain("ERX answers with evidence.");
+    expect(await responses[0]!.text()).toContain("Research Egypt.");
     expect(await responses[1]!.text()).toContain("search_egypt");
     expect(await responses[2]!.text()).toContain("Sitemap:");
     expect(await responses[3]!.text()).toContain("<urlset");
@@ -83,6 +86,9 @@ describe("web and REST", () => {
     expect(await responses[7]!.text()).toContain("clipboard.writeText");
     expect(responses[8]!.headers.get("content-type")).toContain("image/png");
     expect(responses[9]!.headers.get("content-type")).toContain("image/webp");
+    expect(responses[10]!.headers.get("content-type")).toContain("image/webp");
+    expect(responses[11]!.headers.get("content-type")).toContain("image/webp");
+    expect(responses[12]!.headers.get("content-type")).toContain("font/woff2");
   });
 
   it("adds security headers and bounded API rate limiting", async () => {

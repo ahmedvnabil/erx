@@ -20,6 +20,10 @@ export interface WebOptions { includeMcp?: boolean; rateLimitPerMinute?: number;
 const apiPaths = ["/api/", "/search", "/export", "/mcp"];
 const SOCIAL_CARD_PNG = readFileSync(new URL("../public/social-card.png", import.meta.url));
 const ARCHIVE_ATLAS_WEBP = readFileSync(new URL("../public/archive-atlas.webp", import.meta.url));
+const RESEARCH_DESK_WEBP = readFileSync(new URL("../public/research-desk.webp", import.meta.url));
+const ARCHIVE_CARE_WEBP = readFileSync(new URL("../public/archive-care.webp", import.meta.url));
+const READEX_PRO_AR_WOFF2 = readFileSync(new URL("../public/readex-pro-ar.woff2", import.meta.url));
+const READEX_PRO_LATIN_WOFF2 = readFileSync(new URL("../public/readex-pro-latin.woff2", import.meta.url));
 
 export function createWebServer(store: ResearchStore, options: WebOptions = {}) {
   const limits = new Map<string, { window: number; count: number }>();
@@ -59,6 +63,10 @@ async function route(store: ResearchStore, request: IncomingMessage, response: S
   if (path === "/static/app.js") return staticText(response, APP_JS, "text/javascript; charset=utf-8");
   if (path === "/static/brand.svg") return staticText(response, brandSvg(), "image/svg+xml; charset=utf-8");
   if (path === "/static/archive-atlas.webp") return binary(response, ARCHIVE_ATLAS_WEBP, "image/webp");
+  if (path === "/static/research-desk.webp") return binary(response, RESEARCH_DESK_WEBP, "image/webp");
+  if (path === "/static/archive-care.webp") return binary(response, ARCHIVE_CARE_WEBP, "image/webp");
+  if (path === "/static/readex-pro-ar.woff2") return binary(response, READEX_PRO_AR_WOFF2, "font/woff2");
+  if (path === "/static/readex-pro-latin.woff2") return binary(response, READEX_PRO_LATIN_WOFF2, "font/woff2");
   if (path === "/static/social-card.svg") return staticText(response, socialCardSvg(), "image/svg+xml; charset=utf-8");
   if (path === "/static/social-card.png") return binary(response, SOCIAL_CARD_PNG, "image/png");
   if (path === "/manifest.webmanifest") return json(response, 200, manifest(baseUrl), "application/manifest+json; charset=utf-8");
