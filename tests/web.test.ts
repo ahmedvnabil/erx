@@ -41,15 +41,17 @@ describe("web and REST", () => {
       fetch(`${base}/api/v1/search?q=${encodeURIComponent("قرار اقتصادي")}&mode=hybrid`), fetch(`${base}/healthz`), fetch(`${base}/api/v1/live/datasets`), fetch(`${base}/api/v1/status`), fetch(`${base}/api/v1/coverage`)
     ]);
     const landing = await home.text();
-    expect(landing).toContain("ERX يجيب بالدليل.");
-    expect(landing).toContain("<strong>21</strong>");
+    expect(landing).toContain("كل إجابة تبدأ من أثر.");
+    expect(landing).toContain('class="evidence-ledger"');
+    expect(landing).toContain('class="archive-ticker"');
     expect(landing).toContain("أداة MCP");
-    expect(landing).toContain('class="mcp-console"');
+    expect(landing).toContain('class="trace-sample"');
     expect(landing).toContain("ابحث داخل مصر");
     expect(landing).toContain("npx -y egypt-research-mcp serve --transport stdio");
     expect(landing).toContain(`${base}/mcp`);
     expect(landing).not.toContain("WHO IT IS FOR / 01");
     expect(landing).not.toContain("LIVE ARCHIVE / 02");
+    expect(landing).not.toContain('class="mcp-stats"');
     expect(landing).toContain('property="og:title"');
     expect(landing).toContain('application/ld+json');
     expect(await explorer.text()).toContain("ابدأ البحث");

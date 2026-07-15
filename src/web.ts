@@ -9,6 +9,7 @@ import { exportResults, EXPORT_FORMATS, type ExportFormat } from "./exports.js";
 import { getLiveData, listLiveDatasets, checkLiveSources, LIVE_SOURCE_SLUGS, type LiveQuery, type LiveSourceSlug } from "./live-data.js";
 import { createMcpServer } from "./mcp.js";
 import { APP_JS, PRODUCT_CSS, brandSvg, docsView, landingView, llmsText, manifest, registryManifest, robots, sitemap, socialCardSvg, structuredData } from "./product.js";
+import { LANDING_V2_CSS } from "./landing.js";
 import { HybridRetriever } from "./retrieval.js";
 import type { ResearchStore } from "./store.js";
 import type { SourceType } from "./types.js";
@@ -54,7 +55,7 @@ export function createWebServer(store: ResearchStore, options: WebOptions = {}) 
 async function route(store: ResearchStore, request: IncomingMessage, response: ServerResponse, url: URL, includeMcp: boolean, configuredBaseUrl?: string): Promise<void> {
   const path = url.pathname;
   const baseUrl = configuredBaseUrl ?? url.origin;
-  if (path === "/static/app.css") return staticText(response, APP_CSS + UTILITY_CSS + PRODUCT_CSS, "text/css; charset=utf-8");
+  if (path === "/static/app.css") return staticText(response, APP_CSS + UTILITY_CSS + PRODUCT_CSS + LANDING_V2_CSS, "text/css; charset=utf-8");
   if (path === "/static/app.js") return staticText(response, APP_JS, "text/javascript; charset=utf-8");
   if (path === "/static/brand.svg") return staticText(response, brandSvg(), "image/svg+xml; charset=utf-8");
   if (path === "/static/archive-atlas.webp") return binary(response, ARCHIVE_ATLAS_WEBP, "image/webp");
@@ -187,7 +188,7 @@ function securityHeaders(response: ServerResponse, requestId: string, secureOrig
   response.setHeader("referrer-policy", "strict-origin-when-cross-origin"); response.setHeader("x-frame-options", "DENY");
   response.setHeader("permissions-policy", "camera=(), microphone=(), geolocation=()");
   if (secureOrigin) response.setHeader("strict-transport-security", "max-age=31536000; includeSubDomains");
-  response.setHeader("content-security-policy", "default-src 'self'; script-src 'self' https://unpkg.com https://cdnjs.cloudflare.com; style-src 'self' 'sha256-bsV5JivYxvGywDAZ22EZJKBFip65Ng9xoJVLbBg7bdo='; connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'");
+  response.setHeader("content-security-policy", "default-src 'self'; script-src 'self' https://unpkg.com https://cdnjs.cloudflare.com; style-src 'self' 'sha256-bsV5JivYxvGywDAZ22EZJKBFip65Ng9xoJVLbBg7bdo=' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'");
 }
 
 function limited(request: IncomingMessage, limits: Map<string, { window: number; count: number }>, maximum: number, trustProxy: boolean): boolean {

@@ -1,6 +1,7 @@
 import type { SourceRecord } from "./types.js";
 import { VERSION } from "./version.js";
 import { listLiveDatasets } from "./live-data.js";
+import { landingContent } from "./landing.js";
 
 type Story = Record<string, unknown>;
 type Language = "ar" | "en";
@@ -84,7 +85,8 @@ function pageShell(content: string, options: { language: Language; title: string
   const nav = rtl
     ? [["/explore", "البحث"], ["/sources", "المصادر"], ["/docs", "التوثيق"], ["/methodology", "المنهجية"]]
     : [["/explore", "Explore"], ["/sources", "Sources"], ["/docs", "Docs"], ["/methodology", "Methodology"]];
-  return `<!doctype html><html lang="${options.language}" dir="${rtl ? "rtl" : "ltr"}" class="${rtl ? "" : "en-page"}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(options.title)}</title><meta name="description" content="${esc(options.description)}"><meta property="og:type" content="website"><meta property="og:title" content="${esc(options.title)}"><meta property="og:description" content="${esc(options.description)}"><meta property="og:image" content="${options.baseUrl}/static/social-card.png"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:url" content="${canonical}"><meta name="twitter:card" content="summary_large_image"><link rel="canonical" href="${canonical}"><link rel="alternate" hreflang="ar" href="${options.baseUrl}/"><link rel="alternate" hreflang="en" href="${options.baseUrl}/en"><link rel="alternate" type="application/ld+json" href="${options.baseUrl}/structured-data.json"><link rel="manifest" href="/manifest.webmanifest"><link rel="icon" href="/static/brand.svg" type="image/svg+xml"><link rel="stylesheet" href="/static/app.css">${options.chart ? '<script defer src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js" integrity="sha384-dug+JxfBvklEQdJ4AYuBBAIScUz0bVN73xpy273gcAwHjb3qI0fXmuYNaNfdyYJG" crossorigin="anonymous"></script>' : ""}<script defer src="/static/app.js"></script></head><body class="product-page"><header class="product-nav"><div class="product-shell product-nav__inner"><a class="brand-lockup" href="/"><img class="brand-mark" src="/static/brand.svg" alt="ERX"><span class="brand-copy"><strong>ERX / ${rtl ? BRAND.arabicName : BRAND.englishName}</strong><span>${rtl ? BRAND.englishName : BRAND.arabicName}</span></span></a><nav class="product-links">${nav.map(([href, label]) => `<a href="${href}">${label}</a>`).join("")}<a class="language-link" href="${rtl ? "/en" : "/"}">${rtl ? "EN" : "عربي"}</a></nav></div></header><main>${content}</main><footer class="product-footer"><div class="product-shell product-footer__inner"><span>ERX | ${rtl ? "بنية معرفة مفتوحة، وليست جهة تحقق" : "Open research infrastructure, not a fact-checking authority"}.</span><span>MIT | MCP | TypeScript | SQLite</span></div></footer></body></html>`;
+  const landingClass = options.path === "/" || options.path === "/en" ? " landing-v2" : "";
+  return `<!doctype html><html lang="${options.language}" dir="${rtl ? "rtl" : "ltr"}" class="${rtl ? "" : "en-page"}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(options.title)}</title><meta name="description" content="${esc(options.description)}"><meta property="og:type" content="website"><meta property="og:title" content="${esc(options.title)}"><meta property="og:description" content="${esc(options.description)}"><meta property="og:image" content="${options.baseUrl}/static/social-card.png"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:url" content="${canonical}"><meta name="twitter:card" content="summary_large_image"><link rel="canonical" href="${canonical}"><link rel="alternate" hreflang="ar" href="${options.baseUrl}/"><link rel="alternate" hreflang="en" href="${options.baseUrl}/en"><link rel="alternate" type="application/ld+json" href="${options.baseUrl}/structured-data.json"><link rel="manifest" href="/manifest.webmanifest"><link rel="icon" href="/static/brand.svg" type="image/svg+xml"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Readex+Pro:wght@400..700&display=swap"><link rel="stylesheet" href="/static/app.css">${options.chart ? '<script defer src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js" integrity="sha384-dug+JxfBvklEQdJ4AYuBBAIScUz0bVN73xpy273gcAwHjb3qI0fXmuYNaNfdyYJG" crossorigin="anonymous"></script>' : ""}<script defer src="/static/app.js"></script></head><body class="product-page${landingClass}"><a class="skip-link" href="#main-content">${rtl ? "انتقل إلى المحتوى" : "Skip to content"}</a><header class="product-nav"><div class="product-shell product-nav__inner"><a class="brand-lockup" href="/"><img class="brand-mark" src="/static/brand.svg" alt="ERX"><span class="brand-copy"><strong>ERX / ${rtl ? BRAND.arabicName : BRAND.englishName}</strong><span>${rtl ? BRAND.englishName : BRAND.arabicName}</span></span></a><nav class="product-links" aria-label="${rtl ? "التنقل الرئيسي" : "Primary navigation"}">${nav.map(([href, label]) => `<a href="${href}">${label}</a>`).join("")}<a class="language-link" href="${rtl ? "/en" : "/"}">${rtl ? "EN" : "عربي"}</a></nav></div></header><main id="main-content">${content}</main><footer class="product-footer"><div class="product-shell product-footer__inner"><span>ERX | ${rtl ? "بنية معرفة مفتوحة، وليست جهة تحقق" : "Open research infrastructure, not a fact-checking authority"}.</span><span>MIT | MCP | TypeScript | SQLite</span></div></footer></body></html>`;
 }
 
 function sourceTypeCounts(sources: SourceRecord[]): Array<[string, number]> {
@@ -94,7 +96,31 @@ function sourceTypeCounts(sources: SourceRecord[]): Array<[string, number]> {
   return [...counts.entries()].sort((left, right) => right[1] - left[1]);
 }
 
-export function landingView(sources: SourceRecord[], stories: Story[], baseUrl: string, language: Language): string {
+export function landingView(sources: SourceRecord[], _stories: Story[], baseUrl: string, language: Language): string {
+  const rtl = language === "ar";
+  const liveDatasets = listLiveDatasets();
+  const description = rtl
+    ? "ابحث في الشأن المصري عبر وثائق أصلية وروابط وتواريخ قابلة للفحص والاستشهاد."
+    : "Research Egyptian public affairs through original records, dates and inspectable citations.";
+  return pageShell(landingContent({
+    language,
+    documents: sources.reduce((sum, source) => sum + source.documentCount, 0),
+    sources: sources.length,
+    healthy: sources.filter((source) => source.healthStatus === "healthy").length,
+    tools: MCP_TOOL_DOCS.length,
+    datasets: liveDatasets.map((dataset) => ({ name: dataset.name, provider: dataset.provider })),
+    remote: `${baseUrl}/mcp`,
+    install: "npx -y egypt-research-mcp serve --transport stdio"
+  }), {
+    language,
+    title: rtl ? `${BRAND.arabicName}، كل إجابة تبدأ من أثر` : `${BRAND.englishName}, every answer starts with a trace`,
+    description,
+    path: rtl ? "/" : "/en",
+    baseUrl
+  });
+}
+
+function mcpLandingViewV1(sources: SourceRecord[], stories: Story[], baseUrl: string, language: Language): string {
   const rtl = language === "ar";
   const documents = sources.reduce((sum, source) => sum + source.documentCount, 0);
   const healthy = sources.filter((source) => source.healthStatus === "healthy").length;
