@@ -1,0 +1,39 @@
+<svg viewBox="0 0 960 520" xmlns="http://www.w3.org/2000/svg" font-family="'SF Mono',Menlo,Consolas,'Noto Sans Arabic',monospace" role="img" aria-label="عرض متحرك لأدوات ERX: بحث عربي، مقارنة المصادر، وتصدير استشهادات موثقة">
+  <rect width="960" height="520" fill="#090b0c"/>
+  <rect x="1.5" y="1.5" width="957" height="517" fill="none" stroke="#57e389" stroke-width="3"/>
+  <path d="M0 48h960" stroke="#29312d"/>
+  <text x="28" y="31" fill="#eef0e8" font-size="14" font-weight="700">ERX / RESEARCH SESSION</text>
+  <circle cx="748" cy="26" r="4" fill="#57e389"><animate attributeName="opacity" values="1;.25;1" dur="2.4s" repeatCount="indefinite"/></circle>
+  <text x="762" y="31" fill="#9ca3a0" font-size="12">connected · source-grounded · read-only</text>
+  <defs>
+    <clipPath id="query"><rect x="28" y="64" width="0" height="28"><animate attributeName="width" values="0;0;640;640" keyTimes="0;.02;.17;1" dur="15s" repeatCount="indefinite"/></rect></clipPath>
+    <clipPath id="export"><rect x="28" y="438" width="0" height="28"><animate attributeName="width" values="0;0;620;620" keyTimes="0;.69;.82;1" dur="15s" repeatCount="indefinite"/></rect></clipPath>
+  </defs>
+  <g><animate attributeName="opacity" values="1;1;0;0" keyTimes="0;.94;.99;1" dur="15s" repeatCount="indefinite"/>
+    <g clip-path="url(#query)"><text x="28" y="84" fill="#57e389" font-size="15">❯ <tspan fill="#eef0e8">ابحث عن تطورات ملف اللاجئين في مصر مع المصادر.</tspan></text></g>
+    <g opacity="0"><animate attributeName="opacity" values="0;0;1;1" keyTimes="0;.18;.2;1" dur="15s" repeatCount="indefinite"/>
+      <text x="28" y="118" fill="#9ca3a0" font-size="13">⚙ search_egypt { query: "اللاجئين في مصر", mode: "hybrid" }</text>
+    </g>
+    <g opacity="0"><animate attributeName="opacity" values="0;0;1;1" keyTimes="0;.24;.27;1" dur="15s" repeatCount="indefinite"/>
+      <rect x="28" y="142" width="904" height="104" fill="#0e1311" stroke="#29312d"/>
+      <text x="48" y="169" fill="#57e389" font-size="12">RESULT / 01</text>
+      <text x="48" y="195" fill="#eef0e8" font-size="15" font-weight="700">وثيقة مرتبطة بالاستعلام</text>
+      <text x="48" y="220" fill="#9ca3a0" font-size="12">publisher · publication date · original URL · archive date · match reason</text>
+      <rect x="792" y="165" width="116" height="30" fill="#57e389"/>
+      <text x="850" y="185" fill="#07100a" font-size="11" text-anchor="middle" font-weight="700">SOURCE LINK</text>
+    </g>
+    <g opacity="0"><animate attributeName="opacity" values="0;0;1;1" keyTimes="0;.36;.39;1" dur="15s" repeatCount="indefinite"/>
+      <text x="28" y="282" fill="#57e389" font-size="15">❯ <tspan fill="#eef0e8">قارن التغطية ولا تعتبر التكرار تحققًا.</tspan></text>
+      <text x="28" y="314" fill="#9ca3a0" font-size="13">⚙ compare_sources { query: "اللاجئين في مصر" }</text>
+    </g>
+    <g opacity="0"><animate attributeName="opacity" values="0;0;1;1" keyTimes="0;.47;.5;1" dur="15s" repeatCount="indefinite"/>
+      <path d="M28 346h904M28 398h904" stroke="#29312d"/>
+      <circle cx="50" cy="372" r="5" fill="#57e389"/><text x="68" y="377" fill="#eef0e8" font-size="13">official / legal / academic / statistical / news / rights sources</text>
+      <text x="932" y="377" fill="#9ca3a0" font-size="12" text-anchor="end">agreement ≠ independent verification</text>
+    </g>
+    <g clip-path="url(#export)"><text x="28" y="458" fill="#57e389" font-size="15">❯ <tspan fill="#eef0e8">صدّر المراجع بصيغة BibTeX مع الروابط الأصلية.</tspan></text></g>
+    <g opacity="0"><animate attributeName="opacity" values="0;0;1;1" keyTimes="0;.84;.87;1" dur="15s" repeatCount="indefinite"/>
+      <text x="28" y="490" fill="#57e389" font-size="13">✓ export_references <tspan fill="#9ca3a0">— title · publisher · published_at · original_url · archived_at</tspan></text>
+    </g>
+  </g>
+</svg>
