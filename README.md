@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/media/brand-mark.svg" width="76" alt="ERX mark">
+  <img src="docs/media/erx-readme-hero.svg" width="1200" alt="ERX: من سؤال عن الشأن المصري إلى مصادر وأدلة قابلة للاستشهاد">
 </p>
 
 <h1 align="center">ERX — Egypt Research Commons</h1>
@@ -20,11 +20,11 @@
 </p>
 
 <p align="center">
-  <img src="docs/media/erx-terminal-demo.svg" width="960" alt="عرض متحرك لأدوات ERX: بحث عربي، مقارنة المصادر، وتصدير استشهادات موثقة">
+  <a href="https://erx-mcp.zad.tools/sources"><img src="docs/media/erx-terminal-demo.svg" width="960" alt="مستكشف ERX للمصادر: بحث ومقارنة وعرض الأدلة"></a>
 </p>
 
 <p align="center">
-  <img src="docs/media/erx-stats-strip.svg" width="960" alt="21 أداة MCP، 24 مصدرًا تشغيليًا، 6 موفري بيانات حية، 74 اختبارًا">
+  <img src="docs/media/erx-stats-strip.svg" width="1200" alt="أكثر من ألف وثيقة، 24 مصدرًا، 21 أداة MCP، و76 اختبارًا ناجحًا">
 </p>
 
 ## ابحث في مصر، لا في الضوضاء

@@ -1,27 +1,28 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 500" role="img" aria-labelledby="title desc">
-  <title id="title">ERX — Egypt Research Commons</title>
-  <desc id="desc">MCP-first research infrastructure for source-backed Egyptian research</desc>
-  <rect width="1200" height="500" fill="#090b0c"/>
-  <path d="M0 88H1200M0 420H1200M760 0V500" stroke="#303537"/>
-  <g transform="translate(64 56)">
-    <path d="M18 9h-8v46h8M18 17h20M18 32h20M18 47h20" fill="none" stroke="#eef0e8" stroke-width="4"/>
-    <path d="M38 17 51 32 38 47M45 32h8" fill="none" stroke="#57e389" stroke-width="4"/>
-    <rect x="49" y="28" width="8" height="8" fill="#57e389"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 560" role="img" aria-labelledby="title desc">
+  <title id="title">ERX Egypt Research Commons</title>
+  <desc id="desc">A modern editorial research interface connecting an Egyptian public affairs question to sources and cited evidence.</desc>
+  <defs>
+    <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse"><path d="M32 0H0V32" fill="none" stroke="#1b2421" stroke-width="1"/></pattern>
+    <clipPath id="queryReveal"><rect x="82" y="216" width="0" height="42"><animate attributeName="width" values="0;0;540;540" keyTimes="0;.08;.34;1" dur="8s" repeatCount="indefinite"/></rect></clipPath>
+  </defs>
+  <rect width="1200" height="560" fill="#080b0a"/><rect width="1200" height="560" fill="url(#grid)" opacity=".55"/>
+  <path d="M0 52H1200M744 52V560" stroke="#34413c"/>
+  <g transform="translate(34 16)"><path d="M10 2H2v30h8M10 8h13M10 17h13M10 26h13" fill="none" stroke="#edf1ea" stroke-width="2.5"/><path d="m23 8 9 9-9 9m6-9h6" fill="none" stroke="#59df8b" stroke-width="2.5"/><rect x="32" y="14" width="5" height="5" fill="#59df8b"/></g>
+  <text x="86" y="33" fill="#edf1ea" font-family="system-ui,sans-serif" font-size="14" font-weight="700" letter-spacing="1.4">ERX / EGYPT RESEARCH COMMONS</text>
+  <text x="1162" y="33" fill="#8f9b95" font-family="ui-monospace,monospace" font-size="11" text-anchor="end">LIVE RESEARCH INDEX · CAIRO / 30.0°N</text>
+  <g transform="translate(64 88)">
+    <text fill="#59df8b" font-family="ui-monospace,monospace" font-size="12" letter-spacing="2">PUBLIC AFFAIRS RESEARCH</text>
+    <text y="68" fill="#edf1ea" font-family="system-ui,sans-serif" font-size="54" font-weight="680">Follow Egypt.</text>
+    <text y="124" fill="#edf1ea" font-family="system-ui,sans-serif" font-size="54" font-weight="680">Return to the source.</text>
+    <g transform="translate(0 154)"><rect width="632" height="68" fill="#111715" stroke="#53625c"/><rect x="548" width="84" height="68" fill="#59df8b"/><text x="590" y="42" fill="#071009" font-family="system-ui,sans-serif" font-size="12" font-weight="800" text-anchor="middle">SEARCH</text><text x="18" y="42" fill="#55615c" font-family="system-ui,sans-serif" font-size="17">Ask about a decision, issue, person, or institution...</text><g clip-path="url(#queryReveal)"><rect x="12" y="12" width="530" height="46" fill="#111715"/><text x="18" y="42" fill="#dce2dc" font-family="system-ui,sans-serif" font-size="17">How did the new economic decision develop?</text></g></g>
+    <g transform="translate(0 250)" font-family="ui-monospace,monospace"><text fill="#7f8c86" font-size="10" letter-spacing="1.8">RESEARCH PATH</text><g transform="translate(0 24)" font-size="12" font-weight="700"><rect width="118" height="40" fill="#121917" stroke="#34413c"/><text x="59" y="25" fill="#edf1ea" text-anchor="middle">QUESTION</text><path d="M118 20h30" stroke="#59df8b"/><rect x="148" width="118" height="40" fill="#121917" stroke="#34413c"/><text x="207" y="25" fill="#edf1ea" text-anchor="middle">SOURCES</text><path d="M266 20h30" stroke="#59df8b"/><rect x="296" width="118" height="40" fill="#121917" stroke="#34413c"/><text x="355" y="25" fill="#edf1ea" text-anchor="middle">EVIDENCE</text><path d="M414 20h30" stroke="#59df8b"/><rect x="444" width="118" height="40" fill="#59df8b"/><text x="503" y="25" fill="#071009" text-anchor="middle">CITATION</text></g></g>
   </g>
-  <text x="180" y="92" fill="#57e389" font-family="Arial, sans-serif" font-size="24" font-weight="700" letter-spacing="4">ERX / EGYPT RESEARCH COMMONS</text>
-  <text x="64" y="220" fill="#eef0e8" font-family="Arial, sans-serif" font-size="70" font-weight="800">كل معلومة لها مصدر</text>
-  <text x="64" y="274" fill="#a5adaf" font-family="Arial, sans-serif" font-size="28">بحث موثّق للشأن المصري — للباحث والوكيل الذكي</text>
-  <text x="64" y="365" fill="#57e389" font-family="monospace" font-size="22">ASK → 21 MCP TOOLS → CITED EVIDENCE</text>
-  <g transform="translate(800 96)">
-    <rect width="320" height="260" fill="#111416" stroke="#57e389"/>
-    <text x="28" y="48" fill="#57e389" font-family="monospace" font-size="17">MCP / LIVE</text>
-    <text x="28" y="96" fill="#eef0e8" font-family="monospace" font-size="34" font-weight="700">21 TOOLS</text>
-    <text x="28" y="138" fill="#a5adaf" font-family="monospace" font-size="18">602 DOCUMENTS</text>
-    <text x="28" y="174" fill="#a5adaf" font-family="monospace" font-size="18">24 HEALTHY SOURCES</text>
-    <text x="28" y="210" fill="#a5adaf" font-family="monospace" font-size="18">6 LIVE DATASETS</text>
-    <rect x="28" y="228" width="110" height="10" fill="#57e389"/>
-    <rect x="148" y="228" width="72" height="10" fill="#6ea8fe"/>
-    <rect x="230" y="228" width="62" height="10" fill="#f2c14e"/>
+  <g transform="translate(780 88)" font-family="system-ui,sans-serif">
+    <text fill="#8f9b95" font-family="ui-monospace,monospace" font-size="10" letter-spacing="1.8">SOURCE COVERAGE / LIVE</text>
+    <g transform="translate(0 28)"><rect width="356" height="100" fill="#101614" stroke="#34413c"/><rect width="5" height="100" fill="#59df8b"/><text x="24" y="28" fill="#59df8b" font-size="10" font-weight="700">OFFICIAL RECORD</text><text x="24" y="54" fill="#edf1ea" font-size="16" font-weight="700">Government decision and statement</text><text x="24" y="78" fill="#8f9b95" font-size="11">Original URL · publication date · archived copy</text></g>
+    <g transform="translate(0 144)"><rect width="356" height="100" fill="#101614" stroke="#34413c"/><rect width="5" height="100" fill="#6ea8fe"/><text x="24" y="28" fill="#6ea8fe" font-size="10" font-weight="700">NEWS COVERAGE</text><text x="24" y="54" fill="#edf1ea" font-size="16" font-weight="700">How publishers framed the change</text><text x="24" y="78" fill="#8f9b95" font-size="11">Compare headlines · dates · attributed claims</text></g>
+    <g transform="translate(0 260)"><rect width="356" height="100" fill="#101614" stroke="#34413c"/><rect width="5" height="100" fill="#e8c45b"/><text x="24" y="28" fill="#e8c45b" font-size="10" font-weight="700">PUBLIC DATA</text><text x="24" y="54" fill="#edf1ea" font-size="16" font-weight="700">Indicators and historical context</text><text x="24" y="78" fill="#8f9b95" font-size="11">Methodology · provider · retrieval timestamp</text></g>
+    <circle cx="338" cy="10" r="4" fill="#59df8b"><animate attributeName="opacity" values="1;.25;1" dur="2.2s" repeatCount="indefinite"/></circle>
   </g>
-  <text x="64" y="454" fill="#6f797c" font-family="monospace" font-size="16">erx-mcp.zad.tools  /  OPEN RESEARCH INFRASTRUCTURE</text>
+  <path d="M64 518H1136" stroke="#34413c"/><text x="64" y="540" fill="#7f8c86" font-family="ui-monospace,monospace" font-size="11">SOURCE-BACKED · ARABIC-FIRST · OPEN RESEARCH INFRASTRUCTURE</text><text x="1136" y="540" fill="#59df8b" font-family="ui-monospace,monospace" font-size="11" text-anchor="end">erx-mcp.zad.tools ↗</text>
 </svg>
