@@ -24,4 +24,18 @@ describe("landing content", () => {
     expect(arabic).not.toContain("<موثق>");
     expect(english).not.toMatch(/[—–]/);
   });
+
+  it("presents the ERX brand promise and evidence workflow in both languages", () => {
+    const arabic = landingContent(model("ar"));
+    const english = landingContent(model("en"));
+
+    expect(arabic).toContain("كل معلومة لها مصدر");
+    expect(arabic).toContain("السؤال");
+    expect(arabic).toContain("الأدلة");
+    expect(arabic).toContain("الاستشهاد");
+    expect(english).toContain("Every claim needs a source");
+    expect(english).toContain("Question");
+    expect(english).toContain("Evidence");
+    expect(english).toContain("Citation");
+  });
 });
