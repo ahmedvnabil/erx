@@ -42,8 +42,10 @@ describe("web and REST", () => {
       fetch(`${base}/api/v1/search?q=${encodeURIComponent("قرار اقتصادي")}&mode=hybrid`), fetch(`${base}/healthz`), fetch(`${base}/api/v1/live/datasets`), fetch(`${base}/api/v1/status`), fetch(`${base}/api/v1/coverage`)
     ]);
     const landing = await home.text();
-    expect(landing).toContain("ابحث في مصر.");
-    expect(landing).toContain("وثّق إجابتك.");
+    expect(landing).toContain("تابع الشأن المصري.");
+    expect(landing).toContain("ارجع إلى المصدر.");
+    expect(landing).toContain("الأخبار المصرية");
+    expect(landing).toContain('class="coverage-section product-shell archive-reveal"');
     expect(landing).toContain('class="archive-hero product-shell"');
     expect(landing).toContain('class="archive-stats"');
     expect(landing).toContain("أداة بحث");
@@ -76,7 +78,7 @@ describe("web and REST", () => {
     const paths = ["/en", "/docs", "/robots.txt", "/sitemap.xml", "/llms.txt", "/manifest.webmanifest", "/static/brand.svg", "/static/app.js", "/static/social-card.png", "/static/archive-atlas.webp", "/static/research-desk.webp", "/static/archive-care.webp", "/static/readex-pro-ar.woff2"];
     const responses = await Promise.all(paths.map((path) => fetch(base + path)));
     expect(responses.every((response) => response.ok)).toBe(true);
-    expect(await responses[0]!.text()).toContain("Research Egypt.");
+    expect(await responses[0]!.text()).toContain("Follow Egyptian public affairs.");
     expect(await responses[1]!.text()).toContain("search_egypt");
     expect(await responses[2]!.text()).toContain("Sitemap:");
     expect(await responses[3]!.text()).toContain("<urlset");

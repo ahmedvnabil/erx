@@ -102,8 +102,8 @@ export function landingView(sources: SourceRecord[], _stories: Story[], baseUrl:
   const rtl = language === "ar";
   const liveDatasets = listLiveDatasets();
   const description = rtl
-    ? "ابحث في الشأن المصري عبر وثائق أصلية وروابط وتواريخ قابلة للفحص والاستشهاد."
-    : "Research Egyptian public affairs through original records, dates and inspectable citations.";
+    ? "ابحث في الأخبار المصرية والوثائق والبيانات العامة، وقارن التغطيات مع الرجوع إلى كل مصدر أصلي."
+    : "Search Egyptian news, public records and data, compare coverage, and return to every original source.";
   return pageShell(landingContent({
     language,
     documents: sources.reduce((sum, source) => sum + source.documentCount, 0),
@@ -115,7 +115,7 @@ export function landingView(sources: SourceRecord[], _stories: Story[], baseUrl:
     install: "npx -y egypt-research-mcp serve --transport stdio"
   }), {
     language,
-    title: rtl ? `${BRAND.arabicName}، كل إجابة تبدأ من أثر` : `${BRAND.englishName}, every answer starts with a trace`,
+    title: rtl ? `${BRAND.arabicName} | بحث موثق في الشأن المصري` : `${BRAND.englishName} | Source-grounded Egypt research`,
     description,
     path: rtl ? "/" : "/en",
     baseUrl
