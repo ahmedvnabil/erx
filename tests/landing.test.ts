@@ -53,4 +53,14 @@ describe("landing content", () => {
     expect(english).toContain("Egyptian news");
     expect(english).toContain("Politics and economy");
   });
+
+  it("leads with a functional newsroom search instead of an archival hero image", () => {
+    const arabic = landingContent(model("ar"));
+
+    expect(arabic).toContain('class="newsroom-search"');
+    expect(arabic).toContain('action="/search"');
+    expect(arabic).toContain('name="q"');
+    expect(arabic).toContain("ابحث عن قرار، قضية، شخص أو مؤسسة");
+    expect(arabic).not.toContain('class="archive-hero__media"');
+  });
 });

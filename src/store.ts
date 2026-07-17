@@ -159,6 +159,14 @@ export class ResearchStore {
     return row ? this.sourceRecord(row) : null;
   }
 
+  listSourceDocuments(sourceSlug: string, limit = 24): SearchResult[] {
+    const rows = this.db.prepare(`SELECT d.*, s.slug AS source_slug, s.name AS source_name, s.source_type
+      FROM documents d JOIN sources s ON s.id=d.source_id
+      WHERE s.slug=? AND d.document_type != 'excluded'
+      ORDER BY COALESCE(d.published_at,d.archived_at) DESC LIMIT ?`).all(sourceSlug, clamp(limit, 1, 100)) as Row[];
+    return rows.map((row) => this.searchResult(row));
+  }
+
   updateSourceHealth(slug: string, status: string): void {
     const timestamp = now();
     const result = status === "healthy"

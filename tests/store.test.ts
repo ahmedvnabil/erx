@@ -51,6 +51,7 @@ describe("ResearchStore", () => {
     expect(unchanged).toEqual({ documentId: first.documentId, createdVersion: false });
     expect(store.search("القرار الاقتصادي")).toHaveLength(1);
     expect(store.getDocument(first.documentId)?.citation.url).toBe("https://example.com/a/1");
+    expect(store.listSourceDocuments(source.slug, 12).map((document) => document.documentId)).toEqual([first.documentId]);
     expect(store.integrityCheck()).toBe("ok");
     store.close();
   });

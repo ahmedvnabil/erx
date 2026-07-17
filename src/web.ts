@@ -13,7 +13,7 @@ import { LANDING_V2_CSS } from "./landing.js";
 import { HybridRetriever } from "./retrieval.js";
 import type { ResearchStore } from "./store.js";
 import type { SourceType } from "./types.js";
-import { APP_CSS, UTILITY_CSS, documentView, homeView, knowledgeView, methodologyView, resultsView, sourcesView } from "./views.js";
+import { APP_CSS, SOURCE_EXPLORER_CSS, SOURCE_EXPLORER_JS, UTILITY_CSS, documentView, homeView, knowledgeView, methodologyView, resultsView, sourcesView } from "./views.js";
 
 export interface WebOptions { includeMcp?: boolean; rateLimitPerMinute?: number; trustProxy?: boolean }
 
@@ -59,8 +59,8 @@ export function createWebServer(store: ResearchStore, options: WebOptions = {}) 
 async function route(store: ResearchStore, request: IncomingMessage, response: ServerResponse, url: URL, includeMcp: boolean, configuredBaseUrl?: string): Promise<void> {
   const path = url.pathname;
   const baseUrl = configuredBaseUrl ?? url.origin;
-  if (path === "/static/app.css") return staticText(response, APP_CSS + UTILITY_CSS + PRODUCT_CSS + LANDING_V2_CSS, "text/css; charset=utf-8");
-  if (path === "/static/app.js") return staticText(response, APP_JS, "text/javascript; charset=utf-8");
+  if (path === "/static/app.css") return staticText(response, APP_CSS + UTILITY_CSS + PRODUCT_CSS + LANDING_V2_CSS + SOURCE_EXPLORER_CSS, "text/css; charset=utf-8");
+  if (path === "/static/app.js") return staticText(response, APP_JS + SOURCE_EXPLORER_JS, "text/javascript; charset=utf-8");
   if (path === "/static/brand.svg") return staticText(response, brandSvg(), "image/svg+xml; charset=utf-8");
   if (path === "/static/archive-atlas.webp") return binary(response, ARCHIVE_ATLAS_WEBP, "image/webp");
   if (path === "/static/research-desk.webp") return binary(response, RESEARCH_DESK_WEBP, "image/webp");
@@ -106,7 +106,11 @@ async function route(store: ResearchStore, request: IncomingMessage, response: S
     const id = Number(documentMatch[1]); const document = store.getDocument(id);
     return document ? html(response, 200, documentView(document, store.listEntities({ documentId: id }), store.listClaims({ documentId: id }), store.listEvents({ documentId: id }))) : text(response, 404, "الوثيقة غير موجودة");
   }
-  if (path === "/sources") return html(response, 200, sourcesView(store.listSources(), store.listCrawlRuns(undefined, 50)));
+  if (path === "/sources") {
+    const sources = store.listSources();
+    const documentsBySource = Object.fromEntries(sources.map((source) => [source.slug, store.listSourceDocuments(source.slug, 24)]));
+    return html(response, 200, sourcesView(sources, store.listCrawlRuns(undefined, 200), documentsBySource));
+  }
   if (path === "/knowledge") return html(response, 200, knowledgeView(store.listEntities({ limit: 50 }), store.listEvents({ limit: 30 }), store.listClaims({ limit: 30 }), store.listSavedSearches(30)));
   if (path === "/methodology") return html(response, 200, methodologyView());
   if (path === "/export") {

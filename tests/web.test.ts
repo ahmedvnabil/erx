@@ -51,7 +51,8 @@ describe("web and REST", () => {
     expect(landing).toContain("أداة بحث");
     expect(landing).toContain('class="source-proof product-shell archive-reveal"');
     expect(landing).toContain("ابحث بمرونة");
-    expect(landing).toContain('/static/research-desk.webp');
+    expect(landing).toContain('class="newsroom-search"');
+    expect(landing).not.toContain('/static/research-desk.webp');
     expect(landing).toContain('/static/archive-care.webp');
     expect(landing).toContain("npx -y egypt-research-mcp serve --transport stdio");
     expect(landing).toContain(`${base}/mcp`);
@@ -137,7 +138,14 @@ describe("web and REST", () => {
     const responses = await Promise.all(paths.map((path) => fetch(base + path)));
     expect(responses.every((response) => response.ok)).toBe(true);
     expect(await responses[0]!.text()).toContain("النص الكامل للقرار");
-    expect(await responses[1]!.text()).toContain("كتالوج فقط");
+    const sourcesPage = await responses[1]!.text();
+    expect(sourcesPage).toContain("مستكشف المصادر");
+    expect(sourcesPage).toContain('role="tablist"');
+    expect(sourcesPage).toContain('data-view="table"');
+    expect(sourcesPage).toContain('data-view="grid"');
+    expect(sourcesPage).toContain('data-view="canvas"');
+    expect(sourcesPage).toContain("قرار اقتصادي مصري موثق");
+    expect(sourcesPage).toContain("كتالوج فقط");
     expect(await responses[4]!.text()).toContain("egypt_research_documents 1");
     expect((await responses[12]!.json() as { info: { title: string } }).info.title).toBe("Egypt Research API");
     expect((await fetch(`${base}/api/v1/search?q=x`)).status).toBe(422);
