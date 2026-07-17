@@ -19,15 +19,19 @@
   <a href="docs/architecture.md">المعمارية</a>
 </p>
 
-![ERX research surface](docs/media/erx-gpu-hero.webp)
+<p align="center">
+  <img src="docs/media/erx-terminal-demo.svg" width="960" alt="عرض متحرك لأدوات ERX: بحث عربي، مقارنة المصادر، وتصدير استشهادات موثقة">
+</p>
+
+<p align="center">
+  <img src="docs/media/erx-stats-strip.svg" width="960" alt="21 أداة MCP، 24 مصدرًا تشغيليًا، 6 موفري بيانات حية، 74 اختبارًا">
+</p>
 
 ## السؤال → المصادر → الأدلة → الاستشهاد
 
 ERX ليس وسيلة إعلام ولا جهة تحقق. هو سجل بحثي مفتوح يربط كل نتيجة بالرابط
 الأصلي، وتاريخ النشر، وسياق الظهور، وسبب الترتيب. يستطيع الإنسان البحث من
 الواجهة العربية، ويستطيع الوكيل استخدام الأدوات نفسها عبر MCP أو REST.
-
-![جولة متحركة في واجهة ERX: الصفحة، توثيق المصدر، وأدوات البحث](docs/media/erx-product-tour.gif)
 
 | ما الذي يقدمه ERX؟ | كيف يبقى قابلًا للمراجعة؟ |
 |---|---|
@@ -76,11 +80,6 @@ npx -y egypt-research-mcp serve --transport stdio
 | الجاهزية | `/readyz` | فحص سلامة قاعدة البيانات |
 | المقاييس | `/metrics` | مقاييس Prometheus |
 
-<p align="center">
-  <img src="docs/media/erx-site-hero.webp" width="48%" alt="واجهة ERX الرئيسية بالهوية السوداء والخضراء">
-  <img src="docs/media/erx-site-tools.webp" width="48%" alt="قسم أدوات MCP في ERX">
-</p>
-
 ## أدوات MCP
 
 ### البحث والتتبع
@@ -125,18 +124,9 @@ npx -y egypt-research-mcp serve --transport stdio
 
 ## كيف يعمل
 
-```text
-RSS / HTML / APIs / PDF
-          │
-          ▼
-  collect → normalize → archive
-          │
-          ▼
- SQLite FTS5 + local semantic index
-          │
-          ▼
- Web UI / MCP / REST / exports
-```
+<p align="center">
+  <img src="docs/media/erx-data-flow.svg" width="960" alt="تدفق بيانات ERX من المصادر المباشرة إلى واجهة الويب وMCP وREST والتصدير">
+</p>
 
 - يجمع ERX من 24 مصدرًا تشغيليًا رسميًا وقانونيًا وأكاديميًا وإحصائيًا
   وإخباريًا وحقوقيًا. المصدر المغلق أو المتوقف لا يظهر في الكتالوج التشغيلي.

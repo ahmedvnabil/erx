@@ -1,0 +1,9 @@
+<svg viewBox="0 0 960 100" xmlns="http://www.w3.org/2000/svg" font-family="'SF Mono',Menlo,Consolas,monospace" role="img" aria-label="21 أداة MCP، 24 مصدرًا تشغيليًا، 6 موفري بيانات حية، 74 اختبارًا">
+  <rect width="960" height="100" fill="#090b0c"/><rect x=".5" y=".5" width="959" height="99" fill="none" stroke="#29312d"/>
+  <path d="M240 16v68M480 16v68M720 16v68" stroke="#29312d"/>
+  <g opacity="0"><animate attributeName="opacity" from="0" to="1" begin=".1s" dur=".5s" fill="freeze"/><text x="120" y="50" fill="#eef0e8" font-size="28" font-weight="700" text-anchor="middle">21</text><text x="120" y="73" fill="#9ca3a0" font-size="11" letter-spacing="2" text-anchor="middle">MCP TOOLS</text></g>
+  <g opacity="0"><animate attributeName="opacity" from="0" to="1" begin=".25s" dur=".5s" fill="freeze"/><text x="360" y="50" fill="#eef0e8" font-size="28" font-weight="700" text-anchor="middle">24</text><text x="360" y="73" fill="#9ca3a0" font-size="11" letter-spacing="2" text-anchor="middle">SOURCES</text></g>
+  <g opacity="0"><animate attributeName="opacity" from="0" to="1" begin=".4s" dur=".5s" fill="freeze"/><text x="600" y="50" fill="#eef0e8" font-size="28" font-weight="700" text-anchor="middle">6</text><text x="600" y="73" fill="#9ca3a0" font-size="11" letter-spacing="2" text-anchor="middle">LIVE PROVIDERS</text></g>
+  <g opacity="0"><animate attributeName="opacity" from="0" to="1" begin=".55s" dur=".5s" fill="freeze"/><text x="840" y="50" fill="#eef0e8" font-size="28" font-weight="700" text-anchor="middle">74</text><text x="840" y="73" fill="#9ca3a0" font-size="11" letter-spacing="2" text-anchor="middle">TESTS</text></g>
+  <rect x="-160" y="96" width="160" height="3" fill="#57e389"><animate attributeName="x" values="-160;960" dur="5.5s" repeatCount="indefinite"/></rect>
+</svg>
