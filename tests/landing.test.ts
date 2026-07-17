@@ -38,4 +38,19 @@ describe("landing content", () => {
     expect(english).toContain("Evidence");
     expect(english).toContain("Citation");
   });
+
+  it("positions ERX for news-led research into Egyptian public affairs", () => {
+    const arabic = landingContent(model("ar"));
+    const english = landingContent(model("en"));
+
+    expect(arabic).toContain("تابع الشأن المصري");
+    expect(arabic).toContain("الأخبار المصرية");
+    expect(arabic).toContain("سياسة واقتصاد");
+    expect(arabic).toContain("قانون وحقوق");
+    expect(arabic).toContain("مجتمع وخدمات عامة");
+    expect(arabic).not.toContain("اللاجئين");
+    expect(english).toContain("Follow Egyptian public affairs");
+    expect(english).toContain("Egyptian news");
+    expect(english).toContain("Politics and economy");
+  });
 });

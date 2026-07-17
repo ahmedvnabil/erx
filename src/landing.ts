@@ -39,22 +39,40 @@ const capabilities = {
   ]
 } as const;
 
+const coverage = {
+  ar: [
+    ["سياسة واقتصاد", "قرارات الحكومة، الموازنة، المؤشرات الاقتصادية، وتغطية المؤسسات والصحف."],
+    ["قانون وحقوق", "التشريعات والأحكام والبيانات الحقوقية مع الرجوع إلى الوثيقة الأصلية."],
+    ["مجتمع وخدمات عامة", "الصحة والتعليم والعمل والسكان وما ينعكس مباشرة على الحياة اليومية."],
+    ["إعلام وخطاب عام", "قارن كيف تعرض المصادر المصرية المختلفة القضية نفسها عبر الزمن."]
+  ],
+  en: [
+    ["Politics and economy", "Government decisions, budgets, economic indicators and reporting across institutions and newsrooms."],
+    ["Law and rights", "Legislation, rulings and rights reporting with a route back to the original record."],
+    ["Society and public services", "Health, education, labour and population issues that shape daily life."],
+    ["Media and public discourse", "Compare how Egyptian sources frame the same issue over time."]
+  ]
+} as const;
+
 export function landingContent(model: LandingModel): string {
   const rtl = model.language === "ar";
   const text = rtl ? {
     eyebrow: "ERX / مرصد مصر البحثي",
     promise: "كل معلومة لها مصدر",
-    titleA: "ابحث في مصر.",
-    titleB: "وثّق إجابتك.",
-    lede: "سجل بحثي يربط كل نتيجة بوثيقتها الأصلية وتاريخها وسياقها.",
-    explore: "ابدأ البحث",
-    connect: "اربط وكيلك",
+    titleA: "تابع الشأن المصري.",
+    titleB: "ارجع إلى المصدر.",
+    lede: "ابحث في الأخبار المصرية والوثائق والبيانات العامة، وقارن التغطيات، وابنِ إجابة يمكن مراجعة مصادرها.",
+    explore: "ابحث في مصر",
+    connect: "للمطورين والوكلاء",
     imageAlt: "مكتب بحث يضم وثائق وصحفًا وخريطة لمصر",
     archiveAlt: "أرشيفي يرتب ملفات ووثائق محفوظة",
     documents: "وثيقة قابلة للبحث",
     sources: "مصدرًا موثقًا",
     healthy: "مصدرًا متاحًا",
     tools: "أداة بحث",
+    coverageLabel: "01 / ملفات مصر",
+    coverageTitle: "من الخبر العاجل إلى سياقه الكامل.",
+    coverageBody: "ابدأ من قضية مصرية، ثم تتبع تغطيتها ووثائقها وبياناتها بدل الاكتفاء بنتيجة بحث منفردة.",
     proofTitle: "المصدر ليس هامشًا. هو بداية الإجابة.",
     proofBody: "تحتفظ كل نتيجة بالرابط الأصلي وتاريخ النشر وسبب ظهورها، لتراجعها بنفسك قبل استخدامها.",
     original: "الأصل محفوظ",
@@ -78,17 +96,20 @@ export function landingContent(model: LandingModel): string {
   } : {
     eyebrow: "ERX / Egypt Research Commons",
     promise: "Every claim needs a source",
-    titleA: "Research Egypt.",
-    titleB: "Cite your evidence.",
-    lede: "A research record that connects every result to its original document, date and context.",
-    explore: "Start researching",
-    connect: "Connect your agent",
+    titleA: "Follow Egyptian public affairs.",
+    titleB: "Return to the source.",
+    lede: "Search Egyptian news, documents and public data, compare coverage, and build answers whose sources remain open to review.",
+    explore: "Search Egypt",
+    connect: "For developers and agents",
     imageAlt: "Research desk with documents, newspapers and a map of Egypt",
     archiveAlt: "Archivist arranging preserved records and folders",
     documents: "searchable documents",
     sources: "documented sources",
     healthy: "available sources",
     tools: "research tools",
+    coverageLabel: "01 / Egypt coverage",
+    coverageTitle: "From a breaking story to its full context.",
+    coverageBody: "Start with an Egyptian issue, then trace its reporting, records and data instead of stopping at one search result.",
     proofTitle: "The source is not a footnote. It is the answer's starting point.",
     proofBody: "Every result keeps its original URL, publication date and match reason so you can review it before use.",
     original: "Origin preserved",
@@ -114,8 +135,9 @@ export function landingContent(model: LandingModel): string {
   const capabilityCards = capabilities[model.language].map(([tool, title, description], index) => `<article class="capability-card capability-card--${index + 1}"><code>${tool}</code><h3>${escapeHtml(title)}</h3><p>${escapeHtml(description)}</p></article>`).join("");
   const datasetCards = model.datasets.slice(0, 6).map((dataset) => `<li><strong>${visibleText(dataset.provider)}</strong><span>${visibleText(dataset.name)}</span></li>`).join("");
   const workflow = text.workflow.map(([number, label]) => `<li><span>${number}</span><strong>${label}</strong></li>`).join("");
+  const coverageCards = coverage[model.language].map(([title, description]) => `<article><h3>${title}</h3><p>${description}</p></article>`).join("");
 
-  return `<div class="archive-home"><section class="archive-hero product-shell"><div class="archive-hero__copy"><p class="archive-eyebrow">${text.eyebrow}</p><p class="archive-promise">${text.promise}</p><h1><span>${text.titleA}</span><span>${text.titleB}</span></h1><p class="archive-hero__lede">${text.lede}</p><div class="archive-actions"><a class="archive-button archive-button--primary" href="/explore">${text.explore}</a><a class="archive-button archive-button--secondary" href="#connect">${text.connect}</a></div></div><figure class="archive-hero__media"><img src="/static/research-desk.webp" alt="${text.imageAlt}" width="1536" height="1024" fetchpriority="high"><figcaption><span>ERX / EVIDENCE GRAPH</span><strong>${rtl ? "المصدر ← السياق ← الإجابة" : "source → context → answer"}</strong></figcaption></figure></section><ol class="evidence-workflow product-shell" aria-label="${rtl ? "مسار البحث" : "Research workflow"}">${workflow}</ol><section class="archive-stats" aria-label="${rtl ? "حالة الأرشيف" : "Archive status"}"><div class="product-shell"><div><strong>${model.documents}</strong><span>${text.documents}</span></div><div><strong>${model.sources}</strong><span>${text.sources}</span></div><div><strong>${model.healthy}</strong><span>${text.healthy}</span></div><div><strong>${model.tools}</strong><span>${text.tools}</span></div></div></section><section class="source-proof product-shell archive-reveal"><figure><img src="/static/archive-care.webp" alt="${text.archiveAlt}" width="1200" height="1500" loading="lazy"><figcaption>ARCHIVE / 002</figcaption></figure><div class="source-proof__copy"><p class="section-index">01 / PROVENANCE</p><h2>${text.proofTitle}</h2><p class="section-intro">${text.proofBody}</p><div class="proof-points"><article><h3>${text.original}</h3><p>${text.originalBody}</p></article><article><h3>${text.time}</h3><p>${text.timeBody}</p></article><article><h3>${text.context}</h3><p>${text.contextBody}</p></article></div></div></section><section id="capabilities" class="capability-section product-shell archive-reveal"><header><p class="section-index">02 / MCP TOOLKIT</p><h2>${text.flowTitle}</h2><p>${text.flowBody}</p></header><div class="capability-grid">${capabilityCards}</div></section><section id="connect" class="connect-section product-shell archive-reveal"><div class="connect-section__copy"><p class="section-index">03 / CONNECT</p><h2>${text.connectTitle}</h2><p>${text.connectBody}</p></div><div class="connection-stack"><div><span>${text.remote}</span><code>${escapeHtml(model.remote)}</code><button class="copy-control" data-copy="${escapeHtml(model.remote)}">${text.copy}</button></div><div><span>${text.local}</span><code>${escapeHtml(model.install)}</code><button class="copy-control" data-copy="${escapeHtml(model.install)}">${text.copy}</button></div></div><div class="dataset-strip"><h3>${text.datasets}</h3><ul>${datasetCards}</ul></div></section><section class="archive-final product-shell archive-reveal"><div><p class="archive-promise">${text.promise}</p><h2>${text.finalTitle}</h2><p>${text.finalBody}</p></div><a class="archive-button archive-button--primary" href="/explore">${text.finalCta}</a></section></div>`;
+  return `<div class="archive-home"><section class="archive-hero product-shell"><div class="archive-hero__copy"><p class="archive-eyebrow">${text.eyebrow}</p><p class="archive-promise">${text.promise}</p><h1><span>${text.titleA}</span><span>${text.titleB}</span></h1><p class="archive-hero__lede">${text.lede}</p><div class="archive-actions"><a class="archive-button archive-button--primary" href="/explore">${text.explore}</a><a class="archive-button archive-button--secondary" href="#connect">${text.connect}</a></div></div><figure class="archive-hero__media"><img src="/static/research-desk.webp" alt="${text.imageAlt}" width="1536" height="1024" fetchpriority="high"><figcaption><span>ERX / EVIDENCE GRAPH</span><strong>${rtl ? "المصدر ← السياق ← الإجابة" : "source → context → answer"}</strong></figcaption></figure></section><ol class="evidence-workflow product-shell" aria-label="${rtl ? "مسار البحث" : "Research workflow"}">${workflow}</ol><section class="archive-stats" aria-label="${rtl ? "حالة الأرشيف" : "Archive status"}"><div class="product-shell"><div><strong>${model.documents}</strong><span>${text.documents}</span></div><div><strong>${model.sources}</strong><span>${text.sources}</span></div><div><strong>${model.healthy}</strong><span>${text.healthy}</span></div><div><strong>${model.tools}</strong><span>${text.tools}</span></div></div></section><section class="coverage-section product-shell archive-reveal"><header><p class="section-index">${text.coverageLabel}</p><h2>${text.coverageTitle}</h2><p>${text.coverageBody}</p></header><div class="coverage-grid">${coverageCards}</div></section><section class="source-proof product-shell archive-reveal"><figure><img src="/static/archive-care.webp" alt="${text.archiveAlt}" width="1200" height="1500" loading="lazy"><figcaption>ARCHIVE / 002</figcaption></figure><div class="source-proof__copy"><p class="section-index">02 / PROVENANCE</p><h2>${text.proofTitle}</h2><p class="section-intro">${text.proofBody}</p><div class="proof-points"><article><h3>${text.original}</h3><p>${text.originalBody}</p></article><article><h3>${text.time}</h3><p>${text.timeBody}</p></article><article><h3>${text.context}</h3><p>${text.contextBody}</p></article></div></div></section><section id="capabilities" class="capability-section product-shell archive-reveal"><header><p class="section-index">03 / RESEARCH TOOLS</p><h2>${text.flowTitle}</h2><p>${text.flowBody}</p></header><div class="capability-grid">${capabilityCards}</div></section><section id="connect" class="connect-section product-shell archive-reveal"><div class="connect-section__copy"><p class="section-index">04 / DEVELOPERS</p><h2>${text.connectTitle}</h2><p>${text.connectBody}</p></div><div class="connection-stack"><div><span>${text.remote}</span><code>${escapeHtml(model.remote)}</code><button class="copy-control" data-copy="${escapeHtml(model.remote)}">${text.copy}</button></div><div><span>${text.local}</span><code>${escapeHtml(model.install)}</code><button class="copy-control" data-copy="${escapeHtml(model.install)}">${text.copy}</button></div></div><div class="dataset-strip"><h3>${text.datasets}</h3><ul>${datasetCards}</ul></div></section><section class="archive-final product-shell archive-reveal"><div><p class="archive-promise">${text.promise}</p><h2>${text.finalTitle}</h2><p>${text.finalBody}</p></div><a class="archive-button archive-button--primary" href="/explore">${text.finalCta}</a></section></div>`;
 }
 
 export const LANDING_V2_CSS = `
@@ -128,4 +150,7 @@ export const LANDING_V2_CSS = `
 .landing-v2{--page:#090b0c;--surface:#0e1211;--surface-2:#151b18;--ink:#eef0e8;--muted:#9ca3a0;--line:#29312d;--accent:#57e389;--accent-ink:#07100a;background-color:var(--page);background-image:linear-gradient(rgba(87,227,137,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(87,227,137,.035) 1px,transparent 1px);background-size:48px 48px}.landing-v2 .product-nav{background:rgba(9,11,12,.93);border-color:var(--line)}.landing-v2 .brand-copy span,.landing-v2 .product-footer{color:var(--muted)}.landing-v2 .language-link{color:var(--accent);border-color:var(--accent)}.archive-hero{min-height:calc(100dvh - 72px);padding-block:28px 34px}.archive-hero__copy{border-color:var(--line);background:linear-gradient(145deg,#101513 0%,#0b0e0d 72%)}.archive-eyebrow,.section-index{font-family:ui-monospace,SFMono-Regular,monospace;letter-spacing:.12em;text-transform:uppercase}.archive-promise{width:max-content;margin:0 0 24px;padding:8px 10px;border-inline-start:3px solid var(--accent);background:rgba(87,227,137,.08);color:var(--ink);font-weight:650}.archive-hero h1{font-weight:700}.archive-hero__media{position:relative;border-color:var(--line)}.archive-hero__media img{filter:saturate(.68) contrast(1.07)}.archive-hero__media:after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(90deg,rgba(9,11,12,.38),transparent 38%),linear-gradient(0deg,rgba(9,11,12,.72),transparent 38%)}.archive-hero__media figcaption{position:absolute;z-index:1;inset-inline:28px;bottom:26px;display:flex;justify-content:space-between;gap:24px;color:var(--ink);font:600 .7rem ui-monospace,SFMono-Regular,monospace;letter-spacing:.08em}.archive-hero__media figcaption span{color:var(--accent)}.archive-button{border-color:var(--ink)}.archive-button--primary{border-color:var(--accent);background:var(--accent);color:var(--accent-ink)}.archive-button--primary:hover{background:var(--ink);border-color:var(--ink);color:var(--page)}.archive-button--secondary:hover{background:var(--ink);color:var(--page)}.evidence-workflow{display:grid;grid-template-columns:repeat(4,1fr);margin-block:0 34px;padding:0;list-style:none;border-block:1px solid var(--line)}.evidence-workflow li{position:relative;display:flex;align-items:center;gap:14px;min-height:72px;padding:14px 20px;border-inline-start:1px solid var(--line)}.evidence-workflow li:first-child{border-inline-start:0}.evidence-workflow li:not(:last-child):after{content:"→";position:absolute;z-index:1;inset-inline-end:-10px;color:var(--accent);background:var(--page);padding:2px}.evidence-workflow span{color:var(--accent);font:600 .68rem ui-monospace,SFMono-Regular,monospace}.evidence-workflow strong{font-size:.84rem}.archive-stats{background:#0d110f;border-color:var(--line)}.archive-stats div>div{border-color:var(--line)}.archive-stats strong{color:var(--accent)}.section-index{margin:0 0 20px;color:var(--accent);font-size:.72rem}.source-proof figure{position:relative}.source-proof figure:after{content:"";position:absolute;inset:0;border:1px solid rgba(87,227,137,.3);pointer-events:none}.source-proof img{filter:saturate(.55) contrast(1.05)}.source-proof figcaption{position:absolute;bottom:16px;inset-inline-start:18px;padding:6px 8px;background:var(--page);color:var(--accent);font:600 .66rem ui-monospace,SFMono-Regular,monospace;letter-spacing:.12em}.capability-section,.connect-section{border-color:var(--line)}.capability-card{background:#0e1311;border-color:var(--line)}.capability-card--1{background:var(--ink);color:#0b100d}.capability-card--1 p{color:#56615b}.capability-card code{color:var(--accent)}.connection-stack{border-color:var(--accent)}.connection-stack .copy-control{border-color:var(--accent);color:var(--accent)}.connection-stack .copy-control:hover{background:var(--accent);color:var(--accent-ink)}.dataset-strip li{background:var(--surface-2);border-color:var(--accent)}.archive-final{position:relative}.archive-final:before{content:"ERX";position:absolute;inset-inline-end:0;top:50%;transform:translateY(-56%);z-index:0;color:transparent;-webkit-text-stroke:1px rgba(87,227,137,.15);font:800 clamp(8rem,26vw,24rem)/1 Arial,sans-serif;letter-spacing:-.08em;pointer-events:none}.archive-final>*{position:relative;z-index:1}
 @media(prefers-color-scheme:light){.landing-v2{--page:#090b0c;--surface:#0e1211;--surface-2:#151b18;--ink:#eef0e8;--muted:#9ca3a0;--line:#29312d;--accent:#57e389;--accent-ink:#07100a}.capability-card--1{background:var(--ink);color:#0b100d}.capability-card--1 p{color:#56615b}}
 @media(max-width:640px){.archive-promise{font-size:.82rem}.archive-hero__media figcaption{inset-inline:16px;bottom:14px;flex-direction:column;gap:4px}.evidence-workflow{grid-template-columns:repeat(2,1fr);margin-bottom:22px}.evidence-workflow li:nth-child(3){border-top:1px solid var(--line);border-inline-start:0}.evidence-workflow li:nth-child(4){border-top:1px solid var(--line)}.evidence-workflow li:nth-child(2):after{content:"↓"}.evidence-workflow li:nth-child(3):after{content:"←"}.archive-final:before{top:35%}}
+.coverage-section{padding-block:clamp(88px,10vw,148px);border-bottom:1px solid var(--line)}.coverage-section>header{display:grid;grid-template-columns:4fr 8fr;column-gap:clamp(32px,7vw,96px);align-items:end}.coverage-section>header .section-index{grid-column:1/-1}.coverage-section h2{margin:0;max-width:12ch;font-size:clamp(2.7rem,5.2vw,5.6rem);line-height:1.05;letter-spacing:-.055em}.coverage-section>header>p:last-child{max-width:34rem;margin:0 0 .5rem;color:var(--muted);line-height:1.9}.coverage-grid{display:grid;grid-template-columns:repeat(4,1fr);margin-top:64px;border-block:1px solid var(--line)}.coverage-grid article{min-height:230px;padding:30px 24px;border-inline-start:1px solid var(--line)}.coverage-grid article:first-child{border-inline-start:0}.coverage-grid h3{margin:0 0 60px;font-size:1.08rem}.coverage-grid p{margin:0;color:var(--muted);font-size:.86rem;line-height:1.8}.coverage-grid article:hover{background:rgba(87,227,137,.055)}
+@media(max-width:900px){.coverage-section>header{grid-template-columns:1fr}.coverage-section>header>p:last-child{margin-top:24px}.coverage-grid{grid-template-columns:repeat(2,1fr)}.coverage-grid article:nth-child(3){border-top:1px solid var(--line);border-inline-start:0}.coverage-grid article:nth-child(4){border-top:1px solid var(--line)}}
+@media(max-width:640px){.coverage-section{padding-block:74px}.coverage-grid{grid-template-columns:1fr;margin-top:42px}.coverage-grid article{min-height:auto;border-inline-start:0;border-top:1px solid var(--line)}.coverage-grid article:first-child{border-top:0}.coverage-grid h3{margin-bottom:24px}.coverage-section h2{font-size:clamp(2.3rem,11vw,3.4rem)}}
 `;
