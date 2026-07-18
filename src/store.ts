@@ -107,8 +107,13 @@ export class ResearchStore {
   }
 
   integrityCheck(): string {
-    const row = this.db.prepare("PRAGMA integrity_check").get() as Row | undefined;
-    return asString(row?.["integrity_check"]);
+    const check = new DatabaseSync(this.path, { readOnly: true, timeout: 5_000 });
+    try {
+      const row = check.prepare("PRAGMA integrity_check").get() as Row | undefined;
+      return asString(row?.["integrity_check"]);
+    } finally {
+      check.close();
+    }
   }
 
   count(table: "sources" | "documents" | "document_versions" | "stories" | "entities" | "events" | "claims"): number {
