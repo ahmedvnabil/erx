@@ -61,9 +61,9 @@ const seeds: Seed[] = [
 ];
 
 export const RETIRED_SOURCE_SLUGS = new Set([
-  "amnesty-egypt", "bue-scholar", "egyptian-streets", "hrw-egypt", "icnl-egypt",
-  "msa-repository", "central-bank-egypt", "ntra-laws", "cairo24", "eipr", "almasryalyoum", "egyptian-public-prosecution",
-  "alamiria", "goeic-laws", "ahram-gate", "egyptera", "eeaa-laws", "afte", "masrawy",
+  "amnesty-egypt", "bue-scholar", "hrw-egypt", "icnl-egypt",
+  "central-bank-egypt", "ntra-laws", "cairo24", "egyptian-public-prosecution",
+  "alamiria", "goeic-laws", "ahram-gate", "egyptera", "eeaa-laws",
   "egyptian-customs-legislations", "eda-laws", "mped-sdds", "ministry-of-justice-egypt", "ministry-of-finance-egypt"
 ]);
 

@@ -136,7 +136,7 @@ describe("ResearchStore", () => {
     writableStore.close();
 
     const store = new ResearchStore(database, { readonly: true });
-    expect(store.listSources()).toHaveLength(29);
+    expect(store.listSources()).toHaveLength(35);
     expect(store.count("documents")).toBe(1);
     expect(store.listEntities({ limit: 20 }).length).toBeGreaterThan(0);
     store.close();
