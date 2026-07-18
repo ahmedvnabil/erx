@@ -48,6 +48,7 @@
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
     "audit": "npm audit --audit-level=high",
+    "eval:retrieval": "npm run build && node scripts/evaluate-retrieval.mjs",
     "release:check": "node scripts/check-release.mjs",
     "prepublishOnly": "npm run check && npm test && npm run build"
   },

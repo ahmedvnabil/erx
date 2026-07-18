@@ -4,7 +4,7 @@ import { dirname, resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
 import { MIGRATIONS, SCHEMA } from "./schema.js";
-import { expandArabicSearchToken, headlineTokens, isNonResearchContent, isOutOfScopeContent, jaccard, normalizeArabic, tokenizeQuery } from "./text.js";
+import { classifyDocument, expandArabicSearchToken, headlineTokens, isNonResearchContent, isOutOfScopeContent, jaccard, normalizeArabic, tokenizeQuery } from "./text.js";
 import type {
   ClaimRecord,
   DocumentInput,
@@ -477,6 +477,25 @@ export class ResearchStore {
     }
     this.purgeOrphanKnowledge();
     return { excluded, searchable: this.count("documents") - this.countExcludedDocuments() };
+  }
+
+  backfillDocumentTopics(): { scanned: number; tagged: number; unchanged: number } {
+    const rows = this.db.prepare("SELECT id, title, excerpt, content, topics_json FROM documents WHERE document_type != 'excluded'").all() as Row[];
+    let tagged = 0;
+    this.transaction(() => {
+      const updateDocument = this.db.prepare("UPDATE documents SET topics_json=?, updated_at=? WHERE id=?");
+      const updateSearch = this.db.prepare("UPDATE documents_fts SET topics=? WHERE document_id=?");
+      for (const row of rows) {
+        if (parseJson<string[]>(row["topics_json"], []).length > 0) continue;
+        const topics = classifyDocument(`${asString(row["title"])}\n${asString(row["excerpt"])}\n${asString(row["content"])}`);
+        if (!topics.length) continue;
+        const documentId = asNumber(row["id"]);
+        updateDocument.run(JSON.stringify(topics), now(), documentId);
+        updateSearch.run(normalizeArabic(topics.join(" ")), documentId);
+        tagged += 1;
+      }
+    });
+    return { scanned: rows.length, tagged, unchanged: rows.length - tagged };
   }
 
   rebuildStories(): { stories: number; linkedDocuments: number } {

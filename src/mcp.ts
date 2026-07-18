@@ -167,7 +167,13 @@ export function createMcpServer(store: ResearchStore, options: McpOptions = {}):
     query: z.string().min(1), source_types: z.array(z.enum(SOURCE_TYPES)).optional(), date_from: z.string().optional(), date_to: z.string().optional(), limit: z.number().int().min(1).max(100).default(20)
   }, annotations: readOnly }, ({ query, source_types, date_from, date_to, limit }) => {
     const results = new HybridRetriever(store).search(query, { limit, ...(source_types ? { sourceTypes: source_types } : {}), ...(date_from ? { dateFrom: date_from } : {}), ...(date_to ? { dateTo: date_to } : {}) });
-    return toolResult({ query, count: results.length, results });
+    return toolResult({
+      query,
+      count: results.length,
+      strong_matches: results.length > 0,
+      ...(results.length === 0 ? { message: "لا توجد مطابقات قوية" } : {}),
+      results
+    });
   });
 
   server.registerTool("research_dossier", { description: "حزمة بحث موثقة تجمع البحث الهجين والنتائج والخط الزمني والكيانات والادعاءات وتنوع المصادر.", inputSchema: {

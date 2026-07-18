@@ -76,6 +76,26 @@ describe("ResearchStore", () => {
     store.close();
   });
 
+  it("backfills missing Arabic topics without overwriting reviewed topics", () => {
+    const store = new ResearchStore(join(mkdtempSync(join(tmpdir(), "egypt-topic-backfill-")), "research.db"));
+    store.initialize();
+    store.upsertSource(source);
+    const missing = store.upsertDocument({
+      externalId: "topic-missing", sourceSlug: source.slug, canonicalUrl: "https://example.com/topics/missing",
+      title: "ارتفاع التضخم وأسعار السلع", content: "تقرير عن التضخم والعدالة الاجتماعية في مصر."
+    });
+    const reviewed = store.upsertDocument({
+      externalId: "topic-reviewed", sourceSlug: source.slug, canonicalUrl: "https://example.com/topics/reviewed",
+      title: "قرار قضائي بشأن قانون العمل", content: "أصدرت المحكمة قرارا جديدا.", topics: ["مراجعة بشرية"]
+    });
+
+    expect(store.backfillDocumentTopics()).toEqual({ scanned: 2, tagged: 1, unchanged: 1 });
+    expect(store.getDocument(missing.documentId)?.topics).toContain("الاقتصاد والعدالة الاجتماعية");
+    expect(store.getDocument(reviewed.documentId)?.topics).toEqual(["مراجعة بشرية"]);
+    expect(store.search("التضخم")[0]?.topics).toContain("الاقتصاد والعدالة الاجتماعية");
+    store.close();
+  });
+
   it("hides sports and entertainment noise and clusters related reporting", () => {
     const store = new ResearchStore(join(mkdtempSync(join(tmpdir(), "egypt-filter-stories-")), "research.db"));
     store.initialize();
@@ -116,7 +136,7 @@ describe("ResearchStore", () => {
     writableStore.close();
 
     const store = new ResearchStore(database, { readonly: true });
-    expect(store.listSources()).toHaveLength(24);
+    expect(store.listSources()).toHaveLength(29);
     expect(store.count("documents")).toBe(1);
     expect(store.listEntities({ limit: 20 }).length).toBeGreaterThan(0);
     store.close();

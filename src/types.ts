@@ -78,6 +78,7 @@ export interface SearchResult {
   content?: string;
   retrievalScore?: number;
   matchReasons?: Array<"lexical" | "semantic">;
+  rankingExplanation?: string;
 }
 
 export interface SearchOptions {

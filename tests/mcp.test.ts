@@ -64,6 +64,12 @@ describe("MCP contract", () => {
     }));
     const comparedClaims = await client.callTool({ name: "compare_claims", arguments: { query: "قرار اقتصادي" } });
     expect(comparedClaims.structuredContent).toEqual(expect.objectContaining({ count: 1, clusters: expect.any(Array) }));
+    const noStrongMatches = await client.callTool({ name: "hybrid_search", arguments: { query: "استعلام بلا صلة بالمحتوى الموجود" } });
+    expect(noStrongMatches.structuredContent).toEqual(expect.objectContaining({
+      count: 0,
+      strong_matches: false,
+      message: "لا توجد مطابقات قوية"
+    }));
     const sourcesResource = (await client.readResource({ uri: "egypt://sources" })).contents[0];
     const sourceResource = (await client.readResource({ uri: "egypt://source/official-test" })).contents[0];
     expect(sourcesResource && "text" in sourcesResource ? sourcesResource.text : "").toContain("official-test");

@@ -9,6 +9,7 @@ describe("Arabic text helpers", () => {
 
   it("keeps useful query terms and removes duplicates", () => {
     expect(tokenizeQuery("وزارة العدل في مصر والعدل")).toEqual(["وزاره", "العدل", "مصر"]);
+    expect(tokenizeQuery("ما هي أسعار السلع التي تم إعلانها هذا الشهر")).toEqual(["اسعار", "السلع", "اعلانها", "الشهر"]);
   });
 
   it("expands Arabic articles and masculine plural case endings", () => {
@@ -36,5 +37,18 @@ describe("Arabic text helpers", () => {
   it("flags foreign-only news but keeps Egypt-linked international affairs", () => {
     expect(isOutOfScopeContent("ترامب عن غزو العراق وانفجارات في بغداد")).toBe(true);
     expect(isOutOfScopeContent("الرئيس السيسي يبحث تداعيات الحرب على مصر")).toBe(false);
+  });
+
+  it("classifies English Egypt research using the shared Arabic-first taxonomy", () => {
+    expect(classifyDocument("Egyptian journalist detained pending trial for online reporting")).toEqual(expect.arrayContaining([
+      "حرية التعبير والصحافة", "القضاء والمحاكمات", "الحقوق الرقمية"
+    ]));
+    expect(classifyDocument("Inflation, food prices and wages in Egypt")).toContain("الاقتصاد والعدالة الاجتماعية");
+    expect(classifyDocument("Protection of refugees and asylum seekers in Egypt")).toContain("حقوق اللاجئين والمهاجرين");
+  });
+
+  it("excludes English regional news when Egypt is absent", () => {
+    expect(isOutOfScopeContent("Sudan conflict: civilians detained in Khartoum")).toBe(true);
+    expect(isOutOfScopeContent("Egypt mediates talks concerning the Sudan conflict")).toBe(false);
   });
 });

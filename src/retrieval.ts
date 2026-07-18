@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 
 import type { ResearchStore } from "./store.js";
-import { normalizeArabic } from "./text.js";
+import { classifyDocument, normalizeArabic, tokenizeQuery } from "./text.js";
 import type { SearchOptions, SearchResult } from "./types.js";
 
 const conceptGroups = [
@@ -13,6 +13,10 @@ const conceptGroups = [
 ] as const;
 
 const MIN_SEMANTIC_SIMILARITY = 0.2;
+export const MIN_RETRIEVAL_SCORE = 0.018;
+const RRF_K = 60;
+const LEXICAL_WEIGHT = 1.5;
+const SEMANTIC_WEIGHT = 0.35;
 
 export interface EmbeddingProvider {
   readonly provider: string;
@@ -90,28 +94,46 @@ export class HybridRetriever {
   search(query: string, options: SearchOptions = {}): SearchResult[] {
     if (query.trim().length < 2 || query.length > 1_000) throw new Error("query must be between 2 and 1000 characters");
     const limit = Math.max(1, Math.min(options.limit ?? 20, 100));
-    const lexical = this.store.search(query, { ...options, limit: Math.min(100, limit * 5) });
+    const candidateLimit = Math.min(100, limit * 5);
+    const queryTokens = tokenizeQuery(query);
+    const lexicalLists = [this.store.search(query, { ...options, limit: candidateLimit }), ...queryTokens.map((token) => this.store.search(token, { ...options, limit: candidateLimit }))];
     const queryVector = this.provider.embedQuery(query);
     const semantic = this.store.listEmbeddings(this.provider.provider, this.provider.model)
       .map(([documentId, vector]) => [documentId, cosineSimilarity(queryVector, vector)] as const)
       .filter(([, score]) => score >= MIN_SEMANTIC_SIMILARITY)
       .sort((left, right) => right[1] - left[1])
-      .slice(0, Math.min(100, limit * 5));
+      .slice(0, candidateLimit);
     const scores = new Map<number, number>();
     const reasons = new Map<number, Set<"lexical" | "semantic">>();
-    lexical.forEach((result, index) => {
-      scores.set(result.documentId, (scores.get(result.documentId) ?? 0) + 1 / (61 + index));
+    const lexicalMatches = new Map<number, Set<number>>();
+    lexicalLists.forEach((results, listIndex) => results.forEach((result, index) => {
+      const listWeight = listIndex === 0 ? 2 : 1;
+      scores.set(result.documentId, (scores.get(result.documentId) ?? 0) + LEXICAL_WEIGHT * listWeight / (RRF_K + index + 1));
       (reasons.get(result.documentId) ?? reasons.set(result.documentId, new Set()).get(result.documentId))!.add("lexical");
-    });
+      (lexicalMatches.get(result.documentId) ?? lexicalMatches.set(result.documentId, new Set()).get(result.documentId))!.add(listIndex);
+    }));
     semantic.forEach(([documentId, similarity], index) => {
-      scores.set(documentId, (scores.get(documentId) ?? 0) + (1 / (61 + index)) * similarity);
+      if (!lexicalMatches.has(documentId)) return;
+      scores.set(documentId, (scores.get(documentId) ?? 0) + SEMANTIC_WEIGHT * similarity / (RRF_K + index + 1));
       (reasons.get(documentId) ?? reasons.set(documentId, new Set()).get(documentId))!.add("semantic");
     });
-    return [...scores.entries()].sort((left, right) => right[1] - left[1]).slice(0, limit).flatMap(([documentId, score]) => {
+    const queryTopics = new Set(classifyDocument(query));
+    const minimumTokenMatches = Math.max(1, Math.ceil(queryTokens.length * 0.5));
+    return [...scores.entries()].flatMap(([documentId, score]) => {
       const document = this.store.getDocument(documentId);
       if (!document) return [];
+      const matchedTokens = [...(lexicalMatches.get(documentId) ?? [])].filter((listIndex) => listIndex > 0).length;
+      if (matchedTokens < minimumTokenMatches) return [];
+      const titleTokens = new Set(tokenizeQuery(document.title));
+      const titleMatches = queryTokens.filter((token) => titleTokens.has(token)).length;
+      const topicMatches = document.topics.filter((topic) => queryTopics.has(topic)).length;
+      const rerankedScore = score + titleMatches * 0.006 + topicMatches * 0.004;
       const { content: _content, ...result } = document;
-      return [{ ...result, retrievalScore: Number(score.toFixed(8)), matchReasons: [...(reasons.get(documentId) ?? [])].sort() }];
-    });
+      const matchReasons = [...(reasons.get(documentId) ?? [])].sort();
+      const rankingExplanation = `weighted_rrf: lexical=${matchedTokens}/${queryTokens.length}, title=${titleMatches}, topics=${topicMatches}, signals=${matchReasons.join("+")}`;
+      return [{ ...result, retrievalScore: Number(rerankedScore.toFixed(8)), matchReasons, rankingExplanation }];
+    }).filter((result) => result.retrievalScore >= MIN_RETRIEVAL_SCORE)
+      .sort((left, right) => right.retrievalScore - left.retrievalScore || (right.publishedAt ?? right.archivedAt).localeCompare(left.publishedAt ?? left.archivedAt))
+      .slice(0, limit);
   }
 }

@@ -45,6 +45,7 @@ const seeds: Seed[] = [
   ["sinai-foundation", "مؤسسة سيناء لحقوق الإنسان", "https://sinaifhr.org", "human_rights", "civil_society"],
   ["cpj-egypt", "لجنة حماية الصحفيين - مصر", "https://cpj.org/mideast/egypt/", "human_rights", "international_ngo", "en", "https://cpj.org/mideast/egypt/feed/"],
   ["rsf-egypt", "مراسلون بلا حدود - مصر", "https://rsf.org/en/country/egypt", "human_rights", "international_ngo", "en"],
+  ["egyptian-bar-association", "نقابة المحامين المصرية", "https://egyls.com", "legal", "professional_syndicate"],
   ["ahram-gate", "بوابة الأهرام", "https://gate.ahram.org.eg", "news", "state_media"],
   ["shorouk-news", "الشروق", "https://www.shorouknews.com", "news", "private_media"],
   ["almasryalyoum", "المصري اليوم", "https://www.almasryalyoum.com", "news", "private_media", "ar", "https://www.almasryalyoum.com/rss/rssfeeds"],
@@ -60,10 +61,10 @@ const seeds: Seed[] = [
 ];
 
 export const RETIRED_SOURCE_SLUGS = new Set([
-  "amnesty-egypt", "bue-scholar", "daily-news-egypt", "egypt-independent", "egyptian-streets", "hrw-egypt", "icnl-egypt",
+  "amnesty-egypt", "bue-scholar", "egyptian-streets", "hrw-egypt", "icnl-egypt",
   "msa-repository", "central-bank-egypt", "ntra-laws", "cairo24", "eipr", "almasryalyoum", "egyptian-public-prosecution",
-  "alamiria", "fra-egypt", "goeic-laws", "ahram-gate", "egyptera", "eeaa-laws", "afte", "masrawy",
-  "egyptian-customs-legislations", "national-planning-institute", "eda-laws", "mped-sdds", "ministry-of-justice-egypt", "ministry-of-finance-egypt"
+  "alamiria", "goeic-laws", "ahram-gate", "egyptera", "eeaa-laws", "afte", "masrawy",
+  "egyptian-customs-legislations", "eda-laws", "mped-sdds", "ministry-of-justice-egypt", "ministry-of-finance-egypt"
 ]);
 
 export const INITIAL_SOURCES: SourceInput[] = seeds.map(([slug, name, url, sourceType, ownershipType, language = "ar", feedUrl, sitemapUrl]): SourceInput => ({
