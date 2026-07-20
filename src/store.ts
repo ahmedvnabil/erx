@@ -19,6 +19,8 @@ import type {
 
 type Row = Record<string, unknown>;
 
+const ERX_PERMALINK_BASE = "https://erx-mcp.zad.tools";
+
 export interface StoreOptions {
   readonly?: boolean;
 }
@@ -726,11 +728,15 @@ export class ResearchStore {
   private searchResult(row: Row): SearchResult {
     const publishedAt = asNullableString(row["published_at"]);
     const archivedAt = asString(row["archived_at"]);
+    const documentId = asNumber(row["id"]);
+    const canonicalUrl = asString(row["canonical_url"]);
+    const citationId = `erx:${createHash("sha256").update(canonicalUrl).digest("hex").slice(0, 12)}`;
+    const permalink = `${ERX_PERMALINK_BASE}/documents/${documentId}`;
     return {
-      documentId: asNumber(row["id"]), externalId: asString(row["external_id"]), sourceSlug: asString(row["source_slug"]), sourceName: asString(row["source_name"]),
-      sourceType: asString(row["source_type"]) as SourceType, title: asString(row["title"]), excerpt: asString(row["excerpt"]), canonicalUrl: asString(row["canonical_url"]),
+      documentId, externalId: asString(row["external_id"]), sourceSlug: asString(row["source_slug"]), sourceName: asString(row["source_name"]),
+      sourceType: asString(row["source_type"]) as SourceType, title: asString(row["title"]), excerpt: asString(row["excerpt"]), canonicalUrl,
       publishedAt, eventAt: asNullableString(row["event_at"]), archivedAt, documentType: asString(row["document_type"]), topics: parseJson(row["topics_json"], []),
-      citation: { title: asString(row["title"]), sourceName: asString(row["source_name"]), url: asString(row["canonical_url"]), publishedAt, archivedAt }
+      citation: { title: asString(row["title"]), sourceName: asString(row["source_name"]), url: canonicalUrl, publishedAt, archivedAt, citationId, permalink }
     };
   }
 }

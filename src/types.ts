@@ -58,6 +58,8 @@ export interface Citation {
   url: string;
   publishedAt: string | null;
   archivedAt: string;
+  citationId?: string;
+  permalink?: string;
 }
 
 export interface SearchResult {
