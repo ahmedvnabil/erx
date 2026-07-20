@@ -57,6 +57,31 @@ gap worth tracking separately.
 New queries carry empty relevance; run `scripts/build-pool.mjs` on the expanded set to produce
 the labeling worksheet (currently 372 unjudged (query,doc) pairs across the 51 queries).
 
+## Result: valid baseline (step 2, done 2026-07-20)
+Pooled hybrid+lexical top-10 per query on the current corpus and relevance-labeled the 372
+unjudged candidates (0–3). Existing 30-query judgments kept as human anchors; the new grades
+are a **first pass that still needs human review** (`eval/gold-set-labeled.json`, 281 positive
+judgments, ceiling now 0.761). On this valid instrument:
+
+| metric | stale gold (30q) | valid gold (51q) |
+|---|---|---|
+| P@5 | 0.373 | **0.635** (83% of ceiling) |
+| R@20 | 0.847 | **0.927** |
+| nDCG@10 | 0.729 | **0.816** |
+| MRR | 0.829 | **0.892** |
+
+**Conclusion: the retriever was never as weak as 0.373 — that figure was a measurement
+artifact of incomplete judgments.** On a valid gold-set it is already strong. Re-running the
+earlier tuning experiments (coverage bonus, BM25 field weighting) against the valid set: still
+flat-to-negative. There is no free algorithmic win; the pipeline is near-optimal.
+
+**Caveats for the next pass:** (1) judgments are first-pass automated — human review needed
+before this becomes the official gold-set; (2) single-system pooling biases toward the current
+ranker (unretrieved relevant docs, e.g. #644, are unjudged) — pool from multiple configs to
+measure recall-tail fixes; (3) child/digital/women topics remain under-covered (English-titled
+content). Real future gains: stronger embeddings (Gemini, a local measurement once judgments
+are reviewed) and multi-system pooling — not scalar reranker tuning.
+
 ## Reproduce
 ```
 node scripts/evaluate-retrieval.mjs <research.db> eval/gold-set.json   # metrics
