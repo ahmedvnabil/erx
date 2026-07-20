@@ -75,12 +75,19 @@ artifact of incomplete judgments.** On a valid gold-set it is already strong. Re
 earlier tuning experiments (coverage bonus, BM25 field weighting) against the valid set: still
 flat-to-negative. There is no free algorithmic win; the pipeline is near-optimal.
 
-**Caveats for the next pass:** (1) judgments are first-pass automated — human review needed
-before this becomes the official gold-set; (2) single-system pooling biases toward the current
-ranker (unretrieved relevant docs, e.g. #644, are unjudged) — pool from multiple configs to
-measure recall-tail fixes; (3) child/digital/women topics remain under-covered (English-titled
-content). Real future gains: stronger embeddings (Gemini, a local measurement once judgments
-are reviewed) and multi-system pooling — not scalar reranker tuning.
+## Review & finalize (step 3, done 2026-07-20)
+All 196 high-grade (≥2) judgments were human-reviewed: two suspicious grade-3s were confirmed
+correct (misleading titles, on-topic bodies), two foreign false-positives were zeroed (#909
+Berlin, #1431 Palestinian), and five over-grades were corrected (2→1). The reviewed set is now
+the official `eval/gold-set.json` (`reviewed-v1.0.0`); the original 30-query set is archived at
+`eval/gold-set-v0.16.2.json`. Final metrics unchanged at the third decimal:
+`P@5=0.635  R@20=0.927  nDCG@10=0.815  MRR=0.892` (ceiling 0.761).
+
+**Remaining caveats / next levers:** (1) single-system pooling biases toward the current ranker
+(unretrieved relevant docs, e.g. #644, stay unjudged) — pool from multiple configs to measure
+recall-tail fixes; (2) child/digital/women topics remain under-covered (English-titled content).
+Real future gains: stronger embeddings (Gemini, a pure local measurement) and multi-system
+pooling — **not** scalar reranker tuning, which is measurably flat.
 
 ## Reproduce
 ```
