@@ -9,6 +9,7 @@ import { exportResults, EXPORT_FORMATS, type ExportFormat } from "./exports.js";
 import { getLiveData, listLiveDatasets, checkLiveSources, LIVE_SOURCE_SLUGS, type LiveQuery, type LiveSourceSlug } from "./live-data.js";
 import { createMcpServer } from "./mcp.js";
 import { APP_JS, PRODUCT_CSS, brandSvg, docsView, landingView, llmsText, manifest, registryManifest, robots, sitemap, socialCardSvg, structuredData } from "./product.js";
+import { aboutPage, privacyPage, safetyPage, statusPage } from "./pages.js";
 import { LANDING_V2_CSS } from "./landing.js";
 import { HybridRetriever } from "./retrieval.js";
 import type { ResearchStore } from "./store.js";
@@ -147,6 +148,10 @@ async function route(store: ResearchStore, request: IncomingMessage, response: S
     await transport.handleRequest(request, response, body);
     return;
   }
+  if (path === "/about" && (request.method === "GET" || request.method === "HEAD")) return html(response, 200, aboutPage(baseUrl));
+  if (path === "/privacy" && (request.method === "GET" || request.method === "HEAD")) return html(response, 200, privacyPage(baseUrl));
+  if (path === "/safety" && (request.method === "GET" || request.method === "HEAD")) return html(response, 200, safetyPage(baseUrl));
+  if (path === "/status.html" && (request.method === "GET" || request.method === "HEAD")) return html(response, 200, statusPage(store.coverageReport(), baseUrl));
   return json(response, 404, { error: { code: "not_found" } });
 }
 
