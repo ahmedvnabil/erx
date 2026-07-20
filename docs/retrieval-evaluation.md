@@ -37,6 +37,26 @@ scored flat-to-negative, consistent with optimizing against noise.
    the recall tail, and evaluate a stronger embedding (Gemini) as a pure local measurement
    before any production decision.
 
+## Query-set expansion (step 1a, done 2026-07-20)
+The original 30 queries clustered on economy/supply, detention/press, refugees, Sinai, and
+constitutional/parliament, leaving large corpus topics unqueried. Added **21 new queries**
+(`eval/gold-set-expanded.json`, 51 total), each verified to return on-topic results on the
+current corpus, covering: labor (`قانون العمل الجديد`), health (`التأمين الصحي الشامل`),
+housing (`أزمة الإيجار القديم`), prisons (`أوضاع المحتجزين في سجن بدر`), elections
+(`انتخابات مجلس الشيوخ`, `المؤتمر الوطني للشباب`), women (`التحرش والعنف ضد المرأة`),
+legislation (`قانون الإجراءات الجنائية الجديد`, `قانون منشآت الأمن والأمان البيولوجي`),
+energy (`الطاقة النووية ومحطة الضبعة`), economy (`أسعار الذهب في مصر`, `الدين العام المصري`),
+civil society & institutions (`منظمات المجتمع المدني وحكم الاستئناف`, `محكمة النقض`,
+`المجلس القومي لحقوق الإنسان`), and Azhar education.
+
+**Corpus insight:** child-rights, digital-rights, and some women's-rights documents are
+English-titled academic papers, so Arabic natural-language queries do not match them. Those
+topics need either English queries or better cross-lingual handling — a coverage/retrieval
+gap worth tracking separately.
+
+New queries carry empty relevance; run `scripts/build-pool.mjs` on the expanded set to produce
+the labeling worksheet (currently 372 unjudged (query,doc) pairs across the 51 queries).
+
 ## Reproduce
 ```
 node scripts/evaluate-retrieval.mjs <research.db> eval/gold-set.json   # metrics
