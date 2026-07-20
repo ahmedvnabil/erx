@@ -188,8 +188,11 @@ async function api(store: ResearchStore, response: ServerResponse, url: URL): Pr
     const offset = parseOffset(url); if (offset === null) return json(response, 422, { error: { code: "invalid_offset" } });
     const limit = Math.max(1, Math.min(parsedLimit, 100)); const mode = url.searchParams.get("mode") ?? "hybrid";
     if (mode !== "hybrid" && mode !== "lexical") return json(response, 422, { error: { code: "invalid_mode" } });
-    const total = store.countSearch(query, {});
-    const results = mode === "hybrid" ? new HybridRetriever(store).search(query, { limit: offset + limit }).slice(offset) : store.search(query, { limit, offset });
+    // Lexical totals are exact via SQL count. Hybrid re-ranks and score-filters, so its
+    // honest total is the size of the (bounded) relevant set — not the raw FTS match count.
+    const ranked = mode === "hybrid" ? new HybridRetriever(store).search(query, { limit: 100 }) : null;
+    const total = ranked ? ranked.length : store.countSearch(query, {});
+    const results = ranked ? ranked.slice(offset, offset + limit) : store.search(query, { limit, offset });
     return json(response, 200, wire({ query, mode, ...envelope(offset, total, results.length), results: results.map((result) => ({ ...result, excerpt: result.excerpt.slice(0, 800) })) }));
   }
   const documentMatch = /^\/api\/v1\/documents\/(\d+)$/.exec(path);
