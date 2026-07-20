@@ -22,7 +22,7 @@ describe("MCP contract", () => {
 
     const tools = await client.listTools();
     expect(tools.tools.map((tool) => tool.name).sort()).toEqual([...TOOL_NAMES].sort());
-    const result = await client.callTool({ name: "list_sources", arguments: {} });
+    const result = await client.callTool({ name: "egypt_list_sources", arguments: {} });
     expect(result.isError).not.toBe(true);
 
     await client.close();
@@ -42,18 +42,18 @@ describe("MCP contract", () => {
     const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
     await Promise.all([client.connect(clientTransport), server.connect(serverTransport)]);
     const calls: Array<[string, Record<string, unknown>]> = [
-      ["search_egypt", { query: "قرار اقتصادي" }], ["get_document", { document_id: inserted.documentId }],
-      ["build_timeline", { query: "قرار اقتصادي" }], ["compare_sources", { query: "قرار اقتصادي" }],
-      ["get_source_profile", { source_slug: "official-test" }], ["list_sources", {}],
-      ["get_daily_brief", { date: "2026-07-14" }], ["list_stories", {}],
-      ["export_references", { query: "قرار اقتصادي", format: "ris" }], ["hybrid_search", { query: "قرار اقتصادي", source_types: ["official"], date_from: "2026-01-01" }],
-      ["research_dossier", { query: "قرار اقتصادي", source_types: ["official"], date_from: "2026-01-01" }],
-      ["find_entities", { document_id: inserted.documentId }], ["list_events", { document_id: inserted.documentId }],
-      ["trace_claim", { claim_id: store.listClaims()[0]!.id }], ["compare_claims", { query: "قرار اقتصادي" }],
-      ["list_live_datasets", {}], ["save_research_query", { name: "اقتصاد مصر", query: "قرار اقتصادي" }]
+      ["egypt_search", { query: "قرار اقتصادي" }], ["egypt_get_document", { document_id: inserted.documentId }],
+      ["egypt_build_timeline", { query: "قرار اقتصادي" }], ["egypt_compare_sources", { query: "قرار اقتصادي" }],
+      ["egypt_get_source_profile", { source_slug: "official-test" }], ["egypt_list_sources", {}],
+      ["egypt_get_daily_brief", { date: "2026-07-14" }], ["egypt_list_stories", {}],
+      ["egypt_export_references", { query: "قرار اقتصادي", format: "ris" }], ["egypt_hybrid_search", { query: "قرار اقتصادي", source_types: ["official"], date_from: "2026-01-01" }],
+      ["egypt_research_dossier", { query: "قرار اقتصادي", source_types: ["official"], date_from: "2026-01-01" }],
+      ["egypt_find_entities", { document_id: inserted.documentId }], ["egypt_list_events", { document_id: inserted.documentId }],
+      ["egypt_trace_claim", { claim_id: store.listClaims()[0]!.id }], ["egypt_compare_claims", { query: "قرار اقتصادي" }],
+      ["egypt_list_live_datasets", {}], ["egypt_save_research_query", { name: "اقتصاد مصر", query: "قرار اقتصادي" }]
     ];
     for (const [name, arguments_] of calls) expect((await client.callTool({ name, arguments: arguments_ })).isError).not.toBe(true);
-    const dossier = await client.callTool({ name: "research_dossier", arguments: { query: "قرار اقتصادي" } });
+    const dossier = await client.callTool({ name: "egypt_research_dossier", arguments: { query: "قرار اقتصادي" } });
     expect(dossier.isError).not.toBe(true);
     expect(dossier.structuredContent).toEqual(expect.objectContaining({
       query: "قرار اقتصادي",
@@ -62,9 +62,11 @@ describe("MCP contract", () => {
       claims: expect.any(Array),
       entities: expect.any(Array)
     }));
-    const comparedClaims = await client.callTool({ name: "compare_claims", arguments: { query: "قرار اقتصادي" } });
+    const comparedClaims = await client.callTool({ name: "egypt_compare_claims", arguments: { query: "قرار اقتصادي" } });
     expect(comparedClaims.structuredContent).toEqual(expect.objectContaining({ count: 1, clusters: expect.any(Array) }));
-    const noStrongMatches = await client.callTool({ name: "hybrid_search", arguments: { query: "استعلام بلا صلة بالمحتوى الموجود" } });
+    const firstPage = await client.callTool({ name: "egypt_search", arguments: { query: "قرار اقتصادي", limit: 1, offset: 0 } });
+    expect(firstPage.structuredContent).toEqual(expect.objectContaining({ total_count: 1, count: 1, offset: 0, has_more: false, next_offset: null }));
+    const noStrongMatches = await client.callTool({ name: "egypt_hybrid_search", arguments: { query: "استعلام بلا صلة بالمحتوى الموجود" } });
     expect(noStrongMatches.structuredContent).toEqual(expect.objectContaining({
       count: 0,
       strong_matches: false,
@@ -76,7 +78,7 @@ describe("MCP contract", () => {
     expect(sourceResource && "text" in sourceResource ? sourceResource.text : "").toContain("مصدر رسمي");
     expect((await client.getPrompt({ name: "research_brief", arguments: { topic: "الاقتصاد" } })).messages[0]?.content).toEqual(expect.objectContaining({ type: "text" }));
     expect((await client.getPrompt({ name: "verify_claim", arguments: { claim: "ادعاء" } })).messages).toHaveLength(1);
-    const liveDatasets = await client.callTool({ name: "list_live_datasets", arguments: {} });
+    const liveDatasets = await client.callTool({ name: "egypt_list_live_datasets", arguments: {} });
     expect(liveDatasets.isError).not.toBe(true);
     expect(liveDatasets.structuredContent).toEqual(expect.objectContaining({ count: 6, datasets: expect.any(Array) }));
     await client.close(); await server.close(); store.close();

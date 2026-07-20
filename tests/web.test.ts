@@ -80,7 +80,7 @@ describe("web and REST", () => {
     const responses = await Promise.all(paths.map((path) => fetch(base + path)));
     expect(responses.every((response) => response.ok)).toBe(true);
     expect(await responses[0]!.text()).toContain("Follow Egyptian public affairs.");
-    expect(await responses[1]!.text()).toContain("search_egypt");
+    expect(await responses[1]!.text()).toContain("egypt_search");
     expect(await responses[2]!.text()).toContain("Sitemap:");
     expect(await responses[3]!.text()).toContain("<urlset");
     expect(await responses[4]!.text()).toContain("## MCP tools");

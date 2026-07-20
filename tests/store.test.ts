@@ -18,6 +18,48 @@ const source = {
 };
 
 describe("ResearchStore", () => {
+  it("paginates search with exact totals and non-overlapping offset windows", () => {
+    const store = new ResearchStore(join(mkdtempSync(join(tmpdir(), "egypt-page-")), "research.db"));
+    store.initialize();
+    store.upsertSource(source);
+    for (let index = 0; index < 5; index += 1) {
+      store.upsertDocument({
+        externalId: `econ-${index}`, sourceSlug: source.slug, canonicalUrl: `https://example.com/econ/${index}`,
+        title: `قرار اقتصادي رقم ${index}`, excerpt: "تفاصيل القرار الاقتصادي", content: "أعلنت الحكومة المصرية قرارا اقتصاديا",
+        publishedAt: `2026-07-1${index}T10:00:00.000Z`, documentType: "article", topics: ["economy"], language: "ar"
+      });
+    }
+    expect(store.countSearch("اقتصادي")).toBe(5);
+    const first = store.search("اقتصادي", { limit: 2, offset: 0 });
+    const second = store.search("اقتصادي", { limit: 2, offset: 2 });
+    const third = store.search("اقتصادي", { limit: 2, offset: 4 });
+    expect([first.length, second.length, third.length]).toEqual([2, 2, 1]);
+    const ids = [...first, ...second, ...third].map((result) => result.documentId);
+    expect(new Set(ids).size).toBe(5);
+    expect(store.countSearch("اقتصادي", { sourceTypes: ["legal"] })).toBe(0);
+  });
+
+  it("keeps list counts in agreement with their list queries", () => {
+    const store = new ResearchStore(join(mkdtempSync(join(tmpdir(), "egypt-count-")), "research.db"));
+    store.initialize();
+    store.upsertSource(source);
+    const indexer = new KnowledgeIndexer(store);
+    for (let index = 0; index < 4; index += 1) {
+      const inserted = store.upsertDocument({
+        externalId: `case-${index}`, sourceSlug: source.slug, canonicalUrl: `https://example.com/case/${index}`,
+        title: `النيابة العامة تحقق في القاهرة رقم ${index}`, excerpt: "قرار في القاهرة",
+        content: "أعلنت النيابة العامة في القاهرة قرارا اقتصاديا اليوم", publishedAt: `2026-07-0${index + 1}T09:00:00.000Z`,
+        documentType: "article", topics: ["economy"], language: "ar"
+      });
+      store.assignStory(inserted.documentId);
+      indexer.indexDocument(inserted.documentId);
+    }
+    expect(store.countEntities()).toBe(store.listEntities({ limit: 500 }).length);
+    expect(store.countEvents()).toBe(store.listEvents({ limit: 500 }).length);
+    expect(store.countStories()).toBe(store.listStories(100).length);
+    expect(store.countDocumentsOnDate("2026-07-01")).toBe(store.documentsOnDate("2026-07-01", 100).length);
+  });
+
   it("creates the compatible schema and indexes searchable documents", () => {
     const store = new ResearchStore(join(mkdtempSync(join(tmpdir(), "egypt-mcp-")), "research.db"));
     store.initialize();

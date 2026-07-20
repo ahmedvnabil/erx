@@ -39,7 +39,7 @@ describe("Streamable HTTP", () => {
     const address = http.address(); if (!address || typeof address === "string") throw new Error("missing address");
     const client = new Client({ name: "http-readonly-test", version: "1.0.0" });
     await client.connect(new StreamableHTTPClientTransport(new URL(`http://127.0.0.1:${address.port}/mcp`)) as unknown as Transport);
-    const result = await client.callTool({ name: "save_research_query", arguments: { name: "shared write", query: "economy" } });
+    const result = await client.callTool({ name: "egypt_save_research_query", arguments: { name: "shared write", query: "economy" } });
     expect(result.isError).toBe(true);
     expect(store.listSavedSearches()).toHaveLength(0);
     await client.close(); await new Promise<void>((resolve) => http.close(() => resolve())); store.close();

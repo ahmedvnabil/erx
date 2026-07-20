@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "erx-client"
+version = "1.0.0"
+description = "Dependency-free Python client for the ERX (Egypt Research) REST API"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+keywords = ["egypt", "research", "erx", "mcp", "api-client"]
+dependencies = []
+
+[project.urls]
+Homepage = "https://erx-mcp.zad.tools"
+
+[tool.setuptools]
+py-modules = ["erx_client"]

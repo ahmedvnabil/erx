@@ -19,6 +19,8 @@ import type {
 
 type Row = Record<string, unknown>;
 
+const ERX_PERMALINK_BASE = "https://erx-mcp.zad.tools";
+
 export interface StoreOptions {
   readonly?: boolean;
 }
@@ -258,13 +260,12 @@ export class ResearchStore {
     return asNumber(row["count"]);
   }
 
-  search(query: string, options: SearchOptions = {}): SearchResult[] {
-    const limit = clamp(options.limit ?? 20, 1, 100);
+  private searchClauses(query: string, options: SearchOptions): { join: string; where: string; ranked: boolean; parameters: Array<string | number> } {
     const tokens = tokenizeQuery(query);
     const conditions: string[] = ["d.document_type != 'excluded'"];
     const parameters: Array<string | number> = [];
     let join = "";
-    let rank = "0";
+    let ranked = false;
     if (tokens.length > 0) {
       join = "JOIN documents_fts f ON f.document_id=d.id";
       conditions.push("documents_fts MATCH ?");
@@ -272,7 +273,7 @@ export class ResearchStore {
         const variants = expandArabicSearchToken(token).map((variant) => `\"${variant.replaceAll('"', '""')}\"`);
         return variants.length === 1 ? variants[0]! : `(${variants.join(" OR ")})`;
       }).join(" AND "));
-      rank = "bm25(documents_fts)";
+      ranked = true;
     }
     if (options.sourceTypes?.length) {
       conditions.push(`s.source_type IN (${options.sourceTypes.map(() => "?").join(",")})`);
@@ -280,14 +281,26 @@ export class ResearchStore {
     }
     if (options.dateFrom) { conditions.push("date(COALESCE(d.event_at,d.published_at,d.archived_at)) >= date(?)"); parameters.push(options.dateFrom); }
     if (options.dateTo) { conditions.push("date(COALESCE(d.event_at,d.published_at,d.archived_at)) <= date(?)"); parameters.push(options.dateTo); }
-    const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
-    parameters.push(limit);
+    return { join, where: `WHERE ${conditions.join(" AND ")}`, ranked, parameters };
+  }
+
+  search(query: string, options: SearchOptions = {}): SearchResult[] {
+    const limit = clamp(options.limit ?? 20, 1, 100);
+    const offset = Math.max(0, Math.floor(options.offset ?? 0));
+    const { join, where, ranked, parameters } = this.searchClauses(query, options);
+    const rank = ranked ? "bm25(documents_fts)" : "0";
     const rows = this.db.prepare(`
       SELECT d.*, s.slug AS source_slug, s.name AS source_name, s.source_type, ${rank} AS rank
       FROM documents d JOIN sources s ON s.id=d.source_id ${join} ${where}
-      ORDER BY ${tokens.length ? "rank, d.published_at DESC" : "d.published_at DESC"} LIMIT ?
-    `).all(...parameters) as Row[];
+      ORDER BY ${ranked ? "rank, d.published_at DESC" : "d.published_at DESC"} LIMIT ? OFFSET ?
+    `).all(...parameters, limit, offset) as Row[];
     return rows.map((row) => this.searchResult(row));
+  }
+
+  countSearch(query: string, options: SearchOptions = {}): number {
+    const { join, where, parameters } = this.searchClauses(query, options);
+    const row = this.db.prepare(`SELECT COUNT(*) AS count FROM documents d JOIN sources s ON s.id=d.source_id ${join} ${where}`).get(...parameters) as Row;
+    return asNumber(row["count"]);
   }
 
   getDocument(documentId: number): SearchResult | null {
@@ -310,25 +323,39 @@ export class ResearchStore {
     }).sort((left, right) => asString(left["occurredAt"]).localeCompare(asString(right["occurredAt"])));
   }
 
-  documentsOnDate(date: string, limit = 100): SearchResult[] {
+  documentsOnDate(date: string, limit = 100, offset = 0): SearchResult[] {
     const rows = this.db.prepare(`SELECT d.*, s.slug AS source_slug, s.name AS source_name, s.source_type
       FROM documents d JOIN sources s ON s.id=d.source_id
       WHERE d.document_type != 'excluded' AND date(COALESCE(d.published_at,d.archived_at))=date(?)
-      ORDER BY COALESCE(d.published_at,d.archived_at) DESC LIMIT ?`).all(date, clamp(limit, 1, 100)) as Row[];
+      ORDER BY COALESCE(d.published_at,d.archived_at) DESC LIMIT ? OFFSET ?`).all(date, clamp(limit, 1, 100), Math.max(0, offset)) as Row[];
     return rows.map((row) => this.searchResult(row));
   }
 
-  listEntities(options: { documentId?: number; limit?: number } = {}): EntityRecord[] {
+  countDocumentsOnDate(date: string): number {
+    const row = this.db.prepare(`SELECT COUNT(*) AS count FROM documents d
+      WHERE d.document_type != 'excluded' AND date(COALESCE(d.published_at,d.archived_at))=date(?)`).get(date) as Row;
+    return asNumber(row["count"]);
+  }
+
+  listEntities(options: { documentId?: number; limit?: number; offset?: number } = {}): EntityRecord[] {
     const limit = clamp(options.limit ?? 100, 1, 500);
+    const offset = Math.max(0, options.offset ?? 0);
     const rows = options.documentId === undefined
       ? this.db.prepare(`SELECT e.*, SUM(de.mentions) AS mentions, COUNT(DISTINCT de.document_id) AS document_count
           FROM entities e JOIN document_entities de ON de.entity_id=e.id JOIN documents d ON d.id=de.document_id
           WHERE d.document_type != 'excluded' GROUP BY e.id
-          ORDER BY document_count DESC, mentions DESC LIMIT ?`).all(limit) as Row[]
+          ORDER BY document_count DESC, mentions DESC LIMIT ? OFFSET ?`).all(limit, offset) as Row[]
       : this.db.prepare(`SELECT e.*, SUM(de.mentions) AS mentions, COUNT(DISTINCT de.document_id) AS document_count
           FROM entities e JOIN document_entities de ON de.entity_id=e.id JOIN documents d ON d.id=de.document_id WHERE d.document_type != 'excluded' AND de.document_id=? GROUP BY e.id
-          ORDER BY document_count DESC, mentions DESC LIMIT ?`).all(options.documentId, limit) as Row[];
+          ORDER BY document_count DESC, mentions DESC LIMIT ? OFFSET ?`).all(options.documentId, limit, offset) as Row[];
     return rows.map((row) => ({ id: asNumber(row["id"]), canonicalName: asString(row["canonical_name"]), entityType: asString(row["entity_type"]), aliases: parseJson(row["aliases_json"], []), mentions: asNumber(row["mentions"]), documentCount: asNumber(row["document_count"]) }));
+  }
+
+  countEntities(options: { documentId?: number } = {}): number {
+    const row = options.documentId === undefined
+      ? this.db.prepare(`SELECT COUNT(*) AS count FROM (SELECT e.id FROM entities e JOIN document_entities de ON de.entity_id=e.id JOIN documents d ON d.id=de.document_id WHERE d.document_type != 'excluded' GROUP BY e.id)`).get() as Row
+      : this.db.prepare(`SELECT COUNT(*) AS count FROM (SELECT e.id FROM entities e JOIN document_entities de ON de.entity_id=e.id JOIN documents d ON d.id=de.document_id WHERE d.document_type != 'excluded' AND de.document_id=? GROUP BY e.id)`).get(options.documentId) as Row;
+    return asNumber(row["count"]);
   }
 
   listClaims(options: { documentId?: number; limit?: number } = {}): ClaimRecord[] {
@@ -376,11 +403,12 @@ export class ResearchStore {
     });
   }
 
-  listEvents(options: { documentId?: number; limit?: number } = {}): EventRecord[] {
+  listEvents(options: { documentId?: number; limit?: number; offset?: number } = {}): EventRecord[] {
     const limit = clamp(options.limit ?? 100, 1, 500);
+    const offset = Math.max(0, options.offset ?? 0);
     const events = options.documentId === undefined
-      ? this.db.prepare("SELECT DISTINCT e.* FROM events e JOIN event_documents ed ON ed.event_id=e.id JOIN documents d ON d.id=ed.document_id WHERE d.document_type != 'excluded' ORDER BY COALESCE(e.occurred_at,e.created_at) DESC LIMIT ?").all(limit) as Row[]
-      : this.db.prepare("SELECT DISTINCT e.* FROM events e JOIN event_documents ed ON ed.event_id=e.id JOIN documents d ON d.id=ed.document_id WHERE d.document_type != 'excluded' AND ed.document_id=? ORDER BY COALESCE(e.occurred_at,e.created_at) DESC LIMIT ?").all(options.documentId, limit) as Row[];
+      ? this.db.prepare("SELECT DISTINCT e.* FROM events e JOIN event_documents ed ON ed.event_id=e.id JOIN documents d ON d.id=ed.document_id WHERE d.document_type != 'excluded' ORDER BY COALESCE(e.occurred_at,e.created_at) DESC LIMIT ? OFFSET ?").all(limit, offset) as Row[]
+      : this.db.prepare("SELECT DISTINCT e.* FROM events e JOIN event_documents ed ON ed.event_id=e.id JOIN documents d ON d.id=ed.document_id WHERE d.document_type != 'excluded' AND ed.document_id=? ORDER BY COALESCE(e.occurred_at,e.created_at) DESC LIMIT ? OFFSET ?").all(options.documentId, limit, offset) as Row[];
     return events.map((event) => {
       const documents = this.db.prepare(`SELECT ed.role, d.id, d.title, d.canonical_url, s.name AS source_name
         FROM event_documents ed JOIN documents d ON d.id=ed.document_id JOIN sources s ON s.id=d.source_id WHERE ed.event_id=? AND d.document_type != 'excluded'`).all(event["id"] as number) as Row[];
@@ -388,11 +416,23 @@ export class ResearchStore {
     });
   }
 
-  listStories(limit = 20): Row[] {
+  countEvents(options: { documentId?: number } = {}): number {
+    const row = options.documentId === undefined
+      ? this.db.prepare("SELECT COUNT(DISTINCT e.id) AS count FROM events e JOIN event_documents ed ON ed.event_id=e.id JOIN documents d ON d.id=ed.document_id WHERE d.document_type != 'excluded'").get() as Row
+      : this.db.prepare("SELECT COUNT(DISTINCT e.id) AS count FROM events e JOIN event_documents ed ON ed.event_id=e.id JOIN documents d ON d.id=ed.document_id WHERE d.document_type != 'excluded' AND ed.document_id=?").get(options.documentId) as Row;
+    return asNumber(row["count"]);
+  }
+
+  countStories(): number {
+    const row = this.db.prepare(`SELECT COUNT(*) AS count FROM (SELECT st.id FROM stories st JOIN story_documents sd ON sd.story_id=st.id JOIN documents d ON d.id=sd.document_id WHERE d.document_type != 'excluded' GROUP BY st.id)`).get() as Row;
+    return asNumber(row["count"]);
+  }
+
+  listStories(limit = 20, offset = 0): Row[] {
     const stories = this.db.prepare(`SELECT st.*, COUNT(sd.document_id) AS document_count, COUNT(DISTINCT d.source_id) AS source_count
       FROM stories st JOIN story_documents sd ON sd.story_id=st.id JOIN documents d ON d.id=sd.document_id
       WHERE d.document_type != 'excluded'
-      GROUP BY st.id ORDER BY (source_count > 1) DESC, source_count DESC, document_count DESC, st.last_seen_at DESC LIMIT ?`).all(clamp(limit, 1, 100)) as Row[];
+      GROUP BY st.id ORDER BY (source_count > 1) DESC, source_count DESC, document_count DESC, st.last_seen_at DESC LIMIT ? OFFSET ?`).all(clamp(limit, 1, 100), Math.max(0, offset)) as Row[];
     return stories.map((story) => ({
       id: asNumber(story["id"]), title: asString(story["title"]), firstSeenAt: asString(story["first_seen_at"]),
       lastSeenAt: asString(story["last_seen_at"]), documentCount: asNumber(story["document_count"]), sourceCount: asNumber(story["source_count"]),
@@ -688,11 +728,15 @@ export class ResearchStore {
   private searchResult(row: Row): SearchResult {
     const publishedAt = asNullableString(row["published_at"]);
     const archivedAt = asString(row["archived_at"]);
+    const documentId = asNumber(row["id"]);
+    const canonicalUrl = asString(row["canonical_url"]);
+    const citationId = `erx:${createHash("sha256").update(canonicalUrl).digest("hex").slice(0, 12)}`;
+    const permalink = `${ERX_PERMALINK_BASE}/documents/${documentId}`;
     return {
-      documentId: asNumber(row["id"]), externalId: asString(row["external_id"]), sourceSlug: asString(row["source_slug"]), sourceName: asString(row["source_name"]),
-      sourceType: asString(row["source_type"]) as SourceType, title: asString(row["title"]), excerpt: asString(row["excerpt"]), canonicalUrl: asString(row["canonical_url"]),
+      documentId, externalId: asString(row["external_id"]), sourceSlug: asString(row["source_slug"]), sourceName: asString(row["source_name"]),
+      sourceType: asString(row["source_type"]) as SourceType, title: asString(row["title"]), excerpt: asString(row["excerpt"]), canonicalUrl,
       publishedAt, eventAt: asNullableString(row["event_at"]), archivedAt, documentType: asString(row["document_type"]), topics: parseJson(row["topics_json"], []),
-      citation: { title: asString(row["title"]), sourceName: asString(row["source_name"]), url: asString(row["canonical_url"]), publishedAt, archivedAt }
+      citation: { title: asString(row["title"]), sourceName: asString(row["source_name"]), url: canonicalUrl, publishedAt, archivedAt, citationId, permalink }
     };
   }
 }

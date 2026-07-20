@@ -9,10 +9,11 @@ import { exportResults, EXPORT_FORMATS, type ExportFormat } from "./exports.js";
 import { getLiveData, listLiveDatasets, checkLiveSources, LIVE_SOURCE_SLUGS, type LiveQuery, type LiveSourceSlug } from "./live-data.js";
 import { createMcpServer } from "./mcp.js";
 import { APP_JS, PRODUCT_CSS, brandSvg, docsView, landingView, llmsText, manifest, registryManifest, robots, sitemap, socialCardSvg, structuredData } from "./product.js";
+import { aboutPage, privacyPage, safetyPage, statusPage } from "./pages.js";
 import { LANDING_V2_CSS } from "./landing.js";
 import { HybridRetriever } from "./retrieval.js";
 import type { ResearchStore } from "./store.js";
-import type { SourceType } from "./types.js";
+import type { SearchResult, SourceType } from "./types.js";
 import { APP_CSS, SOURCE_EXPLORER_CSS, SOURCE_EXPLORER_JS, UTILITY_CSS, documentView, homeView, knowledgeView, methodologyView, resultsView, sourcesView } from "./views.js";
 
 export interface WebOptions { includeMcp?: boolean; rateLimitPerMinute?: number; trustProxy?: boolean }
@@ -34,17 +35,22 @@ export function createWebServer(store: ResearchStore, options: WebOptions = {}) 
     const requestId = randomUUID();
     securityHeaders(response, requestId, publicBaseUrl?.startsWith("https://") ?? false);
     const url = new URL(request.url ?? "/", `http://${request.headers.host ?? "127.0.0.1"}`);
-    if (url.pathname.startsWith("/api/v1/")) {
+    const isApiV1 = url.pathname.startsWith("/api/v1/");
+    if (isApiV1) {
       response.setHeader("access-control-allow-origin", "*");
       response.setHeader("access-control-allow-methods", "GET, OPTIONS");
       response.setHeader("access-control-allow-headers", "content-type, accept");
-      response.setHeader("access-control-expose-headers", "x-request-id, etag, cache-control");
+      response.setHeader("access-control-expose-headers", "x-request-id, etag, cache-control, x-ratelimit-limit, x-ratelimit-remaining, x-ratelimit-reset");
       if (request.method === "OPTIONS") { response.statusCode = 204; response.end(); return; }
     }
-    if (apiPaths.some((prefix) => url.pathname.startsWith(prefix)) && limited(request, limits, maximum, trustProxy)) {
-      response.setHeader("retry-after", "60");
-      json(response, 429, { error: { code: "rate_limited", request_id: requestId } });
-      return;
+    if (apiPaths.some((prefix) => url.pathname.startsWith(prefix))) {
+      const rate = rateState(request, limits, maximum, trustProxy);
+      if (isApiV1) {
+        response.setHeader("x-ratelimit-limit", String(maximum));
+        response.setHeader("x-ratelimit-remaining", String(Math.max(0, maximum - rate.count)));
+        response.setHeader("x-ratelimit-reset", String(rate.reset));
+      }
+      if (rate.blocked) { response.setHeader("retry-after", "60"); json(response, 429, { error: { code: "rate_limited", request_id: requestId } }); return; }
     }
     try {
       await route(store, request, response, url, options.includeMcp !== false, publicBaseUrl);
@@ -119,6 +125,11 @@ async function route(store: ResearchStore, request: IncomingMessage, response: S
     response.setHeader("content-disposition", `attachment; filename="egypt-research.${format}"`);
     return text(response, 200, exportResults(store.search(query, { limit: 100 }), format as ExportFormat));
   }
+  if (path === "/feed.xml" && (request.method === "GET" || request.method === "HEAD")) {
+    const sourceType = url.searchParams.get("source_type") as SourceType | null;
+    const documents = store.search("", { limit: 30, ...(sourceType ? { sourceTypes: [sourceType] } : {}) });
+    return text(response, 200, rssFeed(documents, baseUrl), "application/rss+xml; charset=utf-8");
+  }
   if (path.startsWith("/api/v1/")) return await api(store, response, url);
   if (path === "/mcp") {
     if (!includeMcp) return json(response, 404, { error: { code: "not_found" } });
@@ -137,6 +148,10 @@ async function route(store: ResearchStore, request: IncomingMessage, response: S
     await transport.handleRequest(request, response, body);
     return;
   }
+  if (path === "/about" && (request.method === "GET" || request.method === "HEAD")) return html(response, 200, aboutPage(baseUrl));
+  if (path === "/privacy" && (request.method === "GET" || request.method === "HEAD")) return html(response, 200, privacyPage(baseUrl));
+  if (path === "/safety" && (request.method === "GET" || request.method === "HEAD")) return html(response, 200, safetyPage(baseUrl));
+  if (path === "/status.html" && (request.method === "GET" || request.method === "HEAD")) return html(response, 200, statusPage(store.coverageReport(), baseUrl));
   return json(response, 404, { error: { code: "not_found" } });
 }
 
@@ -175,24 +190,111 @@ async function api(store: ResearchStore, response: ServerResponse, url: URL): Pr
     if (query.length < 2 || query.length > 1_000) return json(response, 422, { error: { code: "invalid_query" } });
     const parsedLimit = Number(url.searchParams.get("limit") ?? 20);
     if (!Number.isInteger(parsedLimit)) return json(response, 422, { error: { code: "invalid_limit" } });
+    const offset = parseOffset(url); if (offset === null) return json(response, 422, { error: { code: "invalid_offset" } });
     const limit = Math.max(1, Math.min(parsedLimit, 100)); const mode = url.searchParams.get("mode") ?? "hybrid";
     if (mode !== "hybrid" && mode !== "lexical") return json(response, 422, { error: { code: "invalid_mode" } });
-    const results = mode === "hybrid" ? new HybridRetriever(store).search(query, { limit }) : store.search(query, { limit });
-    return json(response, 200, wire({ query, mode, count: results.length, results: results.map((result) => ({ ...result, excerpt: result.excerpt.slice(0, 800) })) }));
+    // Lexical totals are exact via SQL count. Hybrid re-ranks and score-filters, so its
+    // honest total is the size of the (bounded) relevant set — not the raw FTS match count.
+    const ranked = mode === "hybrid" ? new HybridRetriever(store).search(query, { limit: 100 }) : null;
+    const total = ranked ? ranked.length : store.countSearch(query, {});
+    const results = ranked ? ranked.slice(offset, offset + limit) : store.search(query, { limit, offset });
+    return json(response, 200, wire({ query, mode, ...envelope(offset, total, results.length), results: results.map((result) => ({ ...result, excerpt: result.excerpt.slice(0, 800) })) }));
   }
   const documentMatch = /^\/api\/v1\/documents\/(\d+)$/.exec(path);
   if (documentMatch) { const document = store.getDocument(Number(documentMatch[1])); return document ? json(response, 200, wire({ document })) : json(response, 404, { error: { code: "not_found" } }); }
-  if (path === "/api/v1/sources") { const sources = store.listSources(); return json(response, 200, wire({ count: sources.length, sources })); }
+  if (path === "/api/v1/sources") {
+    const offset = parseOffset(url); if (offset === null) return json(response, 422, { error: { code: "invalid_offset" } });
+    const parsedLimit = Number(url.searchParams.get("limit") ?? 100); if (!Number.isInteger(parsedLimit)) return json(response, 422, { error: { code: "invalid_limit" } });
+    const limit = Math.max(1, Math.min(parsedLimit, 500)); const sources = store.listSources();
+    const page = sources.slice(offset, offset + limit);
+    return json(response, 200, wire({ ...envelope(offset, sources.length, page.length), sources: page }));
+  }
   if (path === "/api/v1/entities") {
     const rawId = url.searchParams.get("document_id"); const id = rawId ? Number(rawId) : undefined;
     if (rawId && !Number.isInteger(id)) return json(response, 422, { error: { code: "invalid_document_id" } });
-    const entities = store.listEntities(id ? { documentId: id } : {}); return json(response, 200, wire({ count: entities.length, entities }));
+    const offset = parseOffset(url); if (offset === null) return json(response, 422, { error: { code: "invalid_offset" } });
+    const parsedLimit = Number(url.searchParams.get("limit") ?? 100); if (!Number.isInteger(parsedLimit)) return json(response, 422, { error: { code: "invalid_limit" } });
+    const limit = Math.max(1, Math.min(parsedLimit, 500)); const filter = id !== undefined ? { documentId: id } : {};
+    const total = store.countEntities(filter); const entities = store.listEntities({ ...filter, limit, offset });
+    return json(response, 200, wire({ ...envelope(offset, total, entities.length), entities }));
   }
-  if (path === "/api/v1/events") { const events = store.listEvents(); return json(response, 200, wire({ count: events.length, events })); }
+  if (path === "/api/v1/events") {
+    const rawId = url.searchParams.get("document_id"); const id = rawId ? Number(rawId) : undefined;
+    if (rawId && !Number.isInteger(id)) return json(response, 422, { error: { code: "invalid_document_id" } });
+    const offset = parseOffset(url); if (offset === null) return json(response, 422, { error: { code: "invalid_offset" } });
+    const parsedLimit = Number(url.searchParams.get("limit") ?? 100); if (!Number.isInteger(parsedLimit)) return json(response, 422, { error: { code: "invalid_limit" } });
+    const limit = Math.max(1, Math.min(parsedLimit, 500)); const filter = id !== undefined ? { documentId: id } : {};
+    const total = store.countEvents(filter); const events = store.listEvents({ ...filter, limit, offset });
+    return json(response, 200, wire({ ...envelope(offset, total, events.length), events }));
+  }
   if (path === "/api/v1/claims") { const claims = store.listClaims(); return json(response, 200, wire({ count: claims.length, claims })); }
   if (path === "/api/v1/saved-searches") { const savedSearches = store.listSavedSearches(); return json(response, 200, wire({ count: savedSearches.length, savedSearches })); }
-  if (path === "/api/v1/openapi.json") return json(response, 200, { openapi: "3.1.0", info: { title: "Egypt Research API", version: "1.2.0" }, paths: { "/api/v1/status": { get: { summary: "Service and archive status" } }, "/api/v1/coverage": { get: { summary: "Archive coverage by topic and source health" } }, "/api/v1/search": { get: { summary: "Search documents" } }, "/api/v1/documents/{document_id}": { get: { summary: "Get a source-backed document" } }, "/api/v1/sources": { get: { summary: "List research sources" } }, "/api/v1/entities": { get: { summary: "List extracted entities" } }, "/api/v1/events": { get: { summary: "List documented events" } }, "/api/v1/claims": { get: { summary: "List claims and evidence" } }, "/api/v1/saved-searches": { get: { summary: "List saved searches" } }, "/api/v1/live/datasets": { get: { summary: "List public live datasets" } }, "/api/v1/live/data": { get: { summary: "Query a public live dataset" } }, "/api/v1/live/health": { get: { summary: "Check live data source health" } } } });
+  if (path === "/api/v1/openapi.json") return json(response, 200, openApiDocument());
   return json(response, 404, { error: { code: "not_found" } });
+}
+
+function parseOffset(url: URL): number | null {
+  const raw = url.searchParams.get("offset");
+  if (raw === null) return 0;
+  const value = Number(raw);
+  return Number.isInteger(value) && value >= 0 ? value : null;
+}
+
+// Mirrors the MCP `page()` envelope so REST pagination stays exact against the SQL counts.
+function envelope(offset: number, total: number, count: number): { count: number; totalCount: number; offset: number; hasMore: boolean; nextOffset: number | null } {
+  const next = offset + count < total ? offset + count : null;
+  return { count, totalCount: total, offset, hasMore: next !== null, nextOffset: next };
+}
+
+function xmlEscape(value: string): string {
+  return value.replace(/[<>&'"]/g, (character) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", "'": "&apos;", '"': "&quot;" }[character] ?? character));
+}
+
+function rssFeed(documents: SearchResult[], baseUrl: string): string {
+  const items = documents.map((document) => {
+    const pubDate = new Date(document.publishedAt ?? document.archivedAt).toUTCString();
+    return `<item><title>${xmlEscape(document.title)}</title><link>${xmlEscape(document.canonicalUrl)}</link><guid isPermaLink="true">${xmlEscape(document.canonicalUrl)}</guid><pubDate>${pubDate}</pubDate><description>${xmlEscape(document.excerpt.slice(0, 500))}</description></item>`;
+  }).join("");
+  return `<?xml version="1.0" encoding="UTF-8"?><rss version="2.0"><channel><title>ERX — أرشيف الشأن المصري</title><link>${xmlEscape(baseUrl)}</link><description>أحدث الوثائق الموثقة من مصادر الشأن المصري.</description><language>ar</language>${items}</channel></rss>`;
+}
+
+function openApiDocument(): unknown {
+  const param = (name: string, type: string, description: string, extra: Record<string, unknown> = {}) => ({ name, in: "query", description, schema: { type, ...extra } });
+  const limitParam = param("limit", "integer", "Maximum items to return.", { minimum: 1, maximum: 500 });
+  const offsetParam = param("offset", "integer", "Number of items to skip.", { minimum: 0, default: 0 });
+  const documentIdParam = param("document_id", "integer", "Filter by document id.", { minimum: 1 });
+  const paged = (schemaRef: string) => ({ "200": { description: "Paginated result set.", content: { "application/json": { schema: { allOf: [{ $ref: "#/components/schemas/PaginatedEnvelope" }, { type: "object", properties: schemaRef ? { [schemaRef]: { type: "array", items: { type: "object" } } } : {} }] } } } }, "422": { $ref: "#/components/responses/Invalid" } });
+  const okObject = { "200": { description: "Success.", content: { "application/json": { schema: { type: "object" } } } } };
+  return {
+    openapi: "3.1.0",
+    info: { title: "Egypt Research API", version: "1.3.0", description: "Source-grounded REST access to the ERX Egyptian public-affairs archive." },
+    servers: [{ url: "/api/v1" }],
+    paths: {
+      "/api/v1/status": { get: { summary: "Service and archive status", responses: okObject } },
+      "/api/v1/coverage": { get: { summary: "Archive coverage by topic and source health", responses: okObject } },
+      "/api/v1/search": { get: { summary: "Search documents", parameters: [param("q", "string", "Query string (2-1000 characters).", { minLength: 2, maxLength: 1000 }), param("mode", "string", "Retrieval mode.", { enum: ["hybrid", "lexical"], default: "hybrid" }), limitParam, offsetParam], responses: paged("results") } },
+      "/api/v1/documents/{document_id}": { get: { summary: "Get a source-backed document", parameters: [{ name: "document_id", in: "path", required: true, schema: { type: "integer", minimum: 1 } }], responses: { ...okObject, "404": { $ref: "#/components/responses/NotFound" } } } },
+      "/api/v1/sources": { get: { summary: "List research sources", parameters: [limitParam, offsetParam], responses: paged("sources") } },
+      "/api/v1/entities": { get: { summary: "List extracted entities", parameters: [documentIdParam, limitParam, offsetParam], responses: paged("entities") } },
+      "/api/v1/events": { get: { summary: "List documented events", parameters: [documentIdParam, limitParam, offsetParam], responses: paged("events") } },
+      "/api/v1/claims": { get: { summary: "List claims and evidence", responses: okObject } },
+      "/api/v1/saved-searches": { get: { summary: "List saved searches", responses: okObject } },
+      "/api/v1/live/datasets": { get: { summary: "List public live datasets", responses: okObject } },
+      "/api/v1/live/data": { get: { summary: "Query a public live dataset", parameters: [param("source", "string", "Live dataset slug."), param("indicator", "string", "Indicator code."), param("country", "string", "Country filter."), param("period_from", "string", "Period lower bound."), param("period_to", "string", "Period upper bound."), param("period", "string", "Exact period."), limitParam], responses: { ...okObject, "422": { $ref: "#/components/responses/Invalid" }, "429": { description: "Rate limited." } } } },
+      "/api/v1/live/health": { get: { summary: "Check live data source health", responses: okObject } },
+      "/api/v1/openapi.json": { get: { summary: "This OpenAPI document", responses: okObject } }
+    },
+    components: {
+      schemas: {
+        PaginatedEnvelope: { type: "object", required: ["count", "total_count", "offset", "has_more", "next_offset"], properties: { count: { type: "integer", description: "Items returned in this page." }, total_count: { type: "integer", description: "Exact total across all pages." }, offset: { type: "integer" }, has_more: { type: "boolean" }, next_offset: { type: ["integer", "null"], description: "Offset for the next page, or null when exhausted." } } },
+        Error: { type: "object", required: ["error"], properties: { error: { type: "object", required: ["code"], properties: { code: { type: "string" }, message: { type: "string" } } } } }
+      },
+      responses: {
+        Invalid: { description: "Invalid request parameters.", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+        NotFound: { description: "Resource not found.", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } }
+      }
+    }
+  };
 }
 
 function securityHeaders(response: ServerResponse, requestId: string, secureOrigin: boolean): void {
@@ -203,10 +305,10 @@ function securityHeaders(response: ServerResponse, requestId: string, secureOrig
   response.setHeader("content-security-policy", "default-src 'self'; script-src 'self' https://unpkg.com https://cdnjs.cloudflare.com; style-src 'self' 'sha256-bsV5JivYxvGywDAZ22EZJKBFip65Ng9xoJVLbBg7bdo=' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'");
 }
 
-function limited(request: IncomingMessage, limits: Map<string, { window: number; count: number }>, maximum: number, trustProxy: boolean): boolean {
-  const window = Math.floor(Date.now() / 60_000); const key = `${clientAddress(request, trustProxy)}:${window}`; const entry = limits.get(key);
-  if (!entry) { limits.set(key, { window, count: 1 }); if (limits.size > 10_000) limits.clear(); return false; }
-  const next = { ...entry, count: entry.count + 1 }; limits.set(key, next); return next.count > maximum;
+function rateState(request: IncomingMessage, limits: Map<string, { window: number; count: number }>, maximum: number, trustProxy: boolean): { blocked: boolean; count: number; reset: number } {
+  const window = Math.floor(Date.now() / 60_000); const key = `${clientAddress(request, trustProxy)}:${window}`; const entry = limits.get(key); const reset = (window + 1) * 60;
+  if (!entry) { limits.set(key, { window, count: 1 }); if (limits.size > 10_000) limits.clear(); return { blocked: false, count: 1, reset }; }
+  const next = { ...entry, count: entry.count + 1 }; limits.set(key, next); return { blocked: next.count > maximum, count: next.count, reset };
 }
 
 function clientAddress(request: IncomingMessage, trustProxy: boolean): string {

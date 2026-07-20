@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 import { createHash } from "node:crypto";
+import { mkdirSync, statSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { createBackup, restoreBackup, verifyBackup } from "./backup.js";
 import { bootstrapCatalog } from "./catalog.js";
 import { SOURCE_CONNECTORS } from "./connectors.js";
@@ -9,6 +11,7 @@ import { createMcpServer } from "./mcp.js";
 import { GeminiEmbeddingProvider, LocalEmbeddingProvider } from "./retrieval.js";
 import { ResearchStore } from "./store.js";
 import { auditSources, summarizeSourceAudits } from "./source-audit.js";
+import { VERSION } from "./version.js";
 import { createWebServer } from "./web.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
@@ -37,7 +40,7 @@ const output = (payload: unknown): void => { process.stdout.write(`${typeof payl
 
 async function main(argv = process.argv.slice(2)): Promise<number> {
   const args = parse(argv);
-  if (!args.command || args.flags.has("help")) { output("Usage: egypt-research <init|seed|prune-sources|ingest|audit-sources|index|reclassify|rebuild-stories|rebuild-events|status|backup|verify-backup|restore|serve> [options]"); return args.command ? 0 : 2; }
+  if (!args.command || args.flags.has("help")) { output("Usage: egypt-research <init|seed|prune-sources|ingest|audit-sources|index|reclassify|rebuild-stories|rebuild-events|status|dataset-dump|backup|verify-backup|restore|serve> [options]"); return args.command ? 0 : 2; }
   if (args.command === "verify-backup") { const input = value(args, "input"); output({ status: verifyBackup(input), backup: input }); return 0; }
   if (args.command === "backup") {
     const destination = value(args, "output", `backups/research-${new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z")}.db`);
@@ -124,6 +127,40 @@ async function main(argv = process.argv.slice(2)): Promise<number> {
       const provider = new LocalEmbeddingProvider(); const reports = new KnowledgeIndexer(store, provider).backfill(limit);
       output({ indexed: reports.length, entities: reports.reduce((sum, report) => sum + report.entities, 0), claims: reports.reduce((sum, report) => sum + report.claims, 0), events: reports.length, provider: provider.provider, model: provider.model });
     }
+    store.close(); return 0;
+  }
+  if (args.command === "dataset-dump") {
+    const directory = value(args, "output", "dist-dataset");
+    mkdirSync(directory, { recursive: true });
+    const documents = store.listDocumentIds(1_000_000)
+      .map((documentId) => store.getDocument(documentId))
+      .filter((document): document is NonNullable<typeof document> => document !== null && document.documentType !== "excluded");
+    const sources = store.listSources();
+    const documentsBody = `${documents.map((document) => JSON.stringify(document)).join("\n")}\n`;
+    const sourcesBody = `${JSON.stringify(sources, null, 2)}\n`;
+    const outputs: Array<{ name: string; body: string }> = [
+      { name: "documents.jsonl", body: documentsBody },
+      { name: "sources.json", body: sourcesBody }
+    ];
+    const files = outputs.map(({ name, body }) => {
+      const filePath = join(directory, name);
+      writeFileSync(filePath, body);
+      return { name, sha256: createHash("sha256").update(body).digest("hex"), bytes: statSync(filePath).size };
+    });
+    const generatedAt = new Date().toISOString();
+    const manifest = {
+      name: "egypt-research-commons-dataset",
+      version: VERSION,
+      generatedAt,
+      documentCount: documents.length,
+      sourceCount: sources.length,
+      files,
+      license: "MIT (code); source content rights reserved to owners",
+      citation: `Egypt Research Commons (ERX) dataset snapshot v${VERSION}, generated ${generatedAt}. https://erx-mcp.zad.tools`
+    };
+    const manifestPath = join(directory, "manifest.json");
+    writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+    output(manifestPath);
     store.close(); return 0;
   }
   if (args.command === "serve") {
