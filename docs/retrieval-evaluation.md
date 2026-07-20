@@ -40,7 +40,7 @@ scored flat-to-negative, consistent with optimizing against noise.
 ## Query-set expansion (step 1a, done 2026-07-20)
 The original 30 queries clustered on economy/supply, detention/press, refugees, Sinai, and
 constitutional/parliament, leaving large corpus topics unqueried. Added **21 new queries**
-(`eval/gold-set-expanded.json`, 51 total), each verified to return on-topic results on the
+(`eval/gold-set.json`, 51 queries total), each verified to return on-topic results on the
 current corpus, covering: labor (`قانون العمل الجديد`), health (`التأمين الصحي الشامل`),
 housing (`أزمة الإيجار القديم`), prisons (`أوضاع المحتجزين في سجن بدر`), elections
 (`انتخابات مجلس الشيوخ`, `المؤتمر الوطني للشباب`), women (`التحرش والعنف ضد المرأة`),
@@ -60,7 +60,7 @@ the labeling worksheet (currently 372 unjudged (query,doc) pairs across the 51 q
 ## Result: valid baseline (step 2, done 2026-07-20)
 Pooled hybrid+lexical top-10 per query on the current corpus and relevance-labeled the 372
 unjudged candidates (0–3). Existing 30-query judgments kept as human anchors; the new grades
-are a **first pass that still needs human review** (`eval/gold-set-labeled.json`, 281 positive
+are a **first pass that still needs human review** (the official `eval/gold-set.json` (reviewed), 281 positive
 judgments, ceiling now 0.761). On this valid instrument:
 
 | metric | stale gold (30q) | valid gold (51q) |
