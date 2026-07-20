@@ -83,6 +83,7 @@ export interface SearchResult {
 
 export interface SearchOptions {
   limit?: number;
+  offset?: number;
   sourceTypes?: SourceType[];
   dateFrom?: string | null;
   dateTo?: string | null;

@@ -10,10 +10,10 @@ import { SOURCE_TYPES } from "./types.js";
 import { VERSION } from "./version.js";
 
 export const TOOL_NAMES = [
-  "search_egypt", "get_document", "build_timeline", "compare_sources", "get_source_profile",
-  "list_sources", "get_daily_brief", "list_stories", "export_references", "hybrid_search",
-  "research_dossier", "find_entities", "list_events", "trace_claim", "compare_claims", "save_research_query"
-  , "list_live_datasets", "get_live_data", "compare_live_data", "live_source_health", "get_coverage"
+  "egypt_search", "egypt_get_document", "egypt_build_timeline", "egypt_compare_sources", "egypt_get_source_profile",
+  "egypt_list_sources", "egypt_get_daily_brief", "egypt_list_stories", "egypt_export_references", "egypt_hybrid_search",
+  "egypt_research_dossier", "egypt_find_entities", "egypt_list_events", "egypt_trace_claim", "egypt_compare_claims", "egypt_save_research_query"
+  , "egypt_list_live_datasets", "egypt_get_live_data", "egypt_compare_live_data", "egypt_live_source_health", "egypt_get_coverage"
 ] as const;
 
 export const METHODOLOGY = {
@@ -47,6 +47,20 @@ function toolResult(payload: Record<string, unknown>) {
 function toolError(code: string, message: string) {
   return { ...toolResult({ ok: false, error: { code, message } }), isError: true };
 }
+
+// Offset-based pagination envelope. Totals are exact because every paginated tool
+// is backed by a deterministic SQL count, so has_more / next_offset never lie.
+function page(offset: number, total: number, itemCount: number) {
+  const next = offset + itemCount < total ? offset + itemCount : null;
+  return { count: itemCount, total_count: total, offset, has_more: next !== null, next_offset: next };
+}
+
+const item = () => z.record(z.string(), z.unknown());
+const items = () => z.array(z.record(z.string(), z.unknown()));
+const pageShape = {
+  count: z.number().int(), total_count: z.number().int(), offset: z.number().int(),
+  has_more: z.boolean(), next_offset: z.number().int().nullable()
+} as const;
 
 function liveQuery(input: { source: LiveQuery["source"]; indicator?: string | undefined; query?: string | undefined; country?: string | undefined; period_from?: string | undefined; period_to?: string | undefined; period?: string | undefined; limit?: number | undefined; refugee_dimension?: "origin" | "asylum" | undefined; flow_code?: "M" | "X" | "X,M" | undefined }): LiveQuery {
   return {
@@ -110,62 +124,67 @@ export function createMcpServer(store: ResearchStore, options: McpOptions = {}):
     instructions: "ابحث في مصادر الشأن المصري وأعد النتائج مع الاستشهادات. لا تصف الادعاءات بأنها حقائق مؤكدة دون مقارنة مصادر مستقلة ووثائق أولية."
   });
 
-  server.registerTool("search_egypt", {
-    description: "بحث موحد في الوثائق المصرية مع فلاتر المصدر والتاريخ.",
+  server.registerTool("egypt_search", {
+    description: "بحث موحد في الوثائق المصرية مع فلاتر المصدر والتاريخ وترقيم عبر offset.",
     inputSchema: {
       query: z.string().min(1), source_types: z.array(z.enum(SOURCE_TYPES)).optional(), date_from: z.string().optional(),
-      date_to: z.string().optional(), limit: z.number().int().min(1).max(100).default(20)
-    }, annotations: readOnly
-  }, ({ query, source_types, date_from, date_to, limit }) => {
-    const results = store.search(query, { limit, ...(source_types ? { sourceTypes: source_types } : {}), ...(date_from ? { dateFrom: date_from } : {}), ...(date_to ? { dateTo: date_to } : {}) });
-    return toolResult({ query, count: results.length, results: results.map((result) => ({ ...result, excerpt: result.excerpt.slice(0, 800) })) });
+      date_to: z.string().optional(), limit: z.number().int().min(1).max(100).default(20), offset: z.number().int().min(0).default(0)
+    }, outputSchema: { query: z.string(), ...pageShape, results: items() }, annotations: readOnly
+  }, ({ query, source_types, date_from, date_to, limit, offset }) => {
+    const searchOptions = { limit, ...(source_types ? { sourceTypes: source_types } : {}), ...(date_from ? { dateFrom: date_from } : {}), ...(date_to ? { dateTo: date_to } : {}) };
+    const total = store.countSearch(query, searchOptions);
+    const results = store.search(query, { ...searchOptions, offset });
+    return toolResult({ query, ...page(offset, total, results.length), results: results.map((result) => ({ ...result, excerpt: result.excerpt.slice(0, 800) })) });
   });
 
-  server.registerTool("get_document", { description: "استرجاع سجل وثيقة واحد مع بيانات الاستشهاد.", inputSchema: { document_id: z.number().int().positive() }, annotations: readOnly }, ({ document_id }) => {
+  server.registerTool("egypt_get_document", { description: "استرجاع سجل وثيقة واحد مع بيانات الاستشهاد.", inputSchema: { document_id: z.number().int().positive() }, outputSchema: { ok: z.boolean(), document: item().optional(), error: item().optional() }, annotations: readOnly }, ({ document_id }) => {
     const document = store.getDocument(document_id);
     return toolResult(document ? { ok: true, document } : { ok: false, error: { code: "not_found", documentId: document_id } });
   });
 
-  server.registerTool("build_timeline", { description: "بناء خط زمني موثق لموضوع أو قضية أو كيان.", inputSchema: { query: z.string().min(1), limit: z.number().int().min(1).max(100).default(100) }, annotations: readOnly }, ({ query, limit }) => {
-    const items = store.timeline(query, limit);
-    return toolResult({ query, count: items.length, items });
+  server.registerTool("egypt_build_timeline", { description: "بناء خط زمني موثق لموضوع أو قضية أو كيان.", inputSchema: { query: z.string().min(1), limit: z.number().int().min(1).max(100).default(100) }, outputSchema: { query: z.string(), count: z.number().int(), items: items() }, annotations: readOnly }, ({ query, limit }) => {
+    const timelineItems = store.timeline(query, limit);
+    return toolResult({ query, count: timelineItems.length, items: timelineItems });
   });
 
-  server.registerTool("compare_sources", { description: "مقارنة تغطية أنواع مختلفة من المصادر لنفس الاستعلام.", inputSchema: { query: z.string().min(1), limit: z.number().int().min(1).max(100).default(50) }, annotations: readOnly }, ({ query, limit }) => {
+  server.registerTool("egypt_compare_sources", { description: "مقارنة تغطية أنواع مختلفة من المصادر لنفس الاستعلام.", inputSchema: { query: z.string().min(1), limit: z.number().int().min(1).max(100).default(50) }, outputSchema: { query: z.string(), total_documents: z.number().int(), independent_source_count: z.number().int(), by_source_type: z.record(z.string(), z.unknown()) }, annotations: readOnly }, ({ query, limit }) => {
     const results = store.search(query, { limit });
     const bySourceType: Record<string, unknown[]> = {};
     for (const result of results) (bySourceType[result.sourceType] ??= []).push(result);
     return toolResult({ query, totalDocuments: results.length, independentSourceCount: new Set(results.map((result) => result.sourceSlug)).size, bySourceType });
   });
 
-  server.registerTool("get_source_profile", { description: "عرض نوع المصدر وملكيته وصحة جمعه وعدد وثائقه.", inputSchema: { source_slug: z.string().min(1) }, annotations: readOnly }, ({ source_slug }) => {
+  server.registerTool("egypt_get_source_profile", { description: "عرض نوع المصدر وملكيته وصحة جمعه وعدد وثائقه.", inputSchema: { source_slug: z.string().min(1) }, outputSchema: { ok: z.boolean(), source: item().optional(), error: item().optional() }, annotations: readOnly }, ({ source_slug }) => {
     const source = store.getSource(source_slug);
     return toolResult(source ? { ok: true, source } : { ok: false, error: { code: "source_not_found", sourceSlug: source_slug } });
   });
 
-  server.registerTool("list_sources", { description: "عرض كتالوج المصادر وحالة الأرشفة لكل مصدر.", inputSchema: { source_type: z.enum(SOURCE_TYPES).optional(), active_only: z.boolean().default(true) }, annotations: readOnly }, ({ source_type, active_only }) => {
-    const sources = store.listSources().filter((source) => (!source_type || source.sourceType === source_type) && (!active_only || source.active));
-    return toolResult({ count: sources.length, sources });
+  server.registerTool("egypt_list_sources", { description: "عرض كتالوج المصادر وحالة الأرشفة لكل مصدر مع ترقيم عبر offset.", inputSchema: { source_type: z.enum(SOURCE_TYPES).optional(), active_only: z.boolean().default(true), limit: z.number().int().min(1).max(200).default(100), offset: z.number().int().min(0).default(0) }, outputSchema: { ...pageShape, sources: items() }, annotations: readOnly }, ({ source_type, active_only, limit, offset }) => {
+    const filtered = store.listSources().filter((source) => (!source_type || source.sourceType === source_type) && (!active_only || source.active));
+    const sources = filtered.slice(offset, offset + limit);
+    return toolResult({ ...page(offset, filtered.length, sources.length), sources });
   });
 
-  server.registerTool("get_daily_brief", { description: "إرجاع مواد يوم محدد مع قياس تنوع المصادر.", inputSchema: { date: z.string().min(8), limit: z.number().int().min(1).max(100).default(50) }, annotations: readOnly }, ({ date, limit }) => {
-    const items = store.documentsOnDate(date, limit);
-    return toolResult({ date, documentCount: items.length, sourceCount: new Set(items.map((item) => item.sourceSlug)).size, items });
+  server.registerTool("egypt_get_daily_brief", { description: "إرجاع مواد يوم محدد مع قياس تنوع المصادر وترقيم عبر offset.", inputSchema: { date: z.string().min(8), limit: z.number().int().min(1).max(100).default(50), offset: z.number().int().min(0).default(0) }, outputSchema: { date: z.string(), ...pageShape, source_count: z.number().int(), items: items() }, annotations: readOnly }, ({ date, limit, offset }) => {
+    const total = store.countDocumentsOnDate(date);
+    const dayItems = store.documentsOnDate(date, limit, offset);
+    return toolResult({ date, ...page(offset, total, dayItems.length), sourceCount: new Set(dayItems.map((entry) => entry.sourceSlug)).size, items: dayItems });
   });
 
-  server.registerTool("list_stories", { description: "عرض القصص المتقاربة مع عدد الوثائق وتنوع المصادر.", inputSchema: { limit: z.number().int().min(1).max(100).default(20) }, annotations: readOnly }, ({ limit }) => {
-    const stories = store.listStories(limit);
-    return toolResult({ count: stories.length, stories });
+  server.registerTool("egypt_list_stories", { description: "عرض القصص المتقاربة مع عدد الوثائق وتنوع المصادر وترقيم عبر offset.", inputSchema: { limit: z.number().int().min(1).max(100).default(20), offset: z.number().int().min(0).default(0) }, outputSchema: { ...pageShape, stories: items() }, annotations: readOnly }, ({ limit, offset }) => {
+    const total = store.countStories();
+    const stories = store.listStories(limit, offset);
+    return toolResult({ ...page(offset, total, stories.length), stories });
   });
 
-  server.registerTool("export_references", { description: "تصدير نتائج البحث بصيغة CSV أو JSONL أو BibTeX أو RIS.", inputSchema: { query: z.string().min(1), format: z.enum(EXPORT_FORMATS).default("ris"), limit: z.number().int().min(1).max(100).default(100) }, annotations: readOnly }, ({ query, format, limit }) => {
+  server.registerTool("egypt_export_references", { description: "تصدير نتائج البحث بصيغة CSV أو JSONL أو BibTeX أو RIS.", inputSchema: { query: z.string().min(1), format: z.enum(EXPORT_FORMATS).default("ris"), limit: z.number().int().min(1).max(100).default(100) }, outputSchema: { ok: z.boolean(), format: z.string(), count: z.number().int(), content: z.string() }, annotations: readOnly }, ({ query, format, limit }) => {
     const results = store.search(query, { limit });
     return toolResult({ ok: true, format, count: results.length, content: exportResults(results, format as ExportFormat) });
   });
 
-  server.registerTool("hybrid_search", { description: "بحث هجين يجمع المطابقة النصية والدلالية مع تفسير الترتيب وفلاتر النوع والفترة.", inputSchema: {
+  server.registerTool("egypt_hybrid_search", { description: "بحث هجين يجمع المطابقة النصية والدلالية مع تفسير الترتيب وفلاتر النوع والفترة.", inputSchema: {
     query: z.string().min(1), source_types: z.array(z.enum(SOURCE_TYPES)).optional(), date_from: z.string().optional(), date_to: z.string().optional(), limit: z.number().int().min(1).max(100).default(20)
-  }, annotations: readOnly }, ({ query, source_types, date_from, date_to, limit }) => {
+  }, outputSchema: { query: z.string(), count: z.number().int(), strong_matches: z.boolean(), message: z.string().optional(), results: items() }, annotations: readOnly }, ({ query, source_types, date_from, date_to, limit }) => {
     const results = new HybridRetriever(store).search(query, { limit, ...(source_types ? { sourceTypes: source_types } : {}), ...(date_from ? { dateFrom: date_from } : {}), ...(date_to ? { dateTo: date_to } : {}) });
     return toolResult({
       query,
@@ -176,34 +195,38 @@ export function createMcpServer(store: ResearchStore, options: McpOptions = {}):
     });
   });
 
-  server.registerTool("research_dossier", { description: "حزمة بحث موثقة تجمع البحث الهجين والنتائج والخط الزمني والكيانات والادعاءات وتنوع المصادر.", inputSchema: {
+  server.registerTool("egypt_research_dossier", { description: "حزمة بحث موثقة تجمع البحث الهجين والنتائج والخط الزمني والكيانات والادعاءات وتنوع المصادر.", inputSchema: {
     query: z.string().min(1), source_types: z.array(z.enum(SOURCE_TYPES)).optional(), date_from: z.string().optional(), date_to: z.string().optional(), limit: z.number().int().min(1).max(50).default(20)
-  }, annotations: readOnly }, ({ query, source_types, date_from, date_to, limit }) => {
+  }, outputSchema: { query: z.string(), coverage: item(), results: items(), timeline: items(), entities: items(), claims: items() }, annotations: readOnly }, ({ query, source_types, date_from, date_to, limit }) => {
     const results = new HybridRetriever(store).search(query, { limit, ...(source_types ? { sourceTypes: source_types } : {}), ...(date_from ? { dateFrom: date_from } : {}), ...(date_to ? { dateTo: date_to } : {}) });
     return toolResult(buildResearchDossier(store, query, results));
   });
 
-  server.registerTool("find_entities", { description: "عرض الكيانات المستخرجة وأعداد ظهورها في الوثائق.", inputSchema: { document_id: z.number().int().positive().optional(), limit: z.number().int().min(1).max(500).default(100) }, annotations: readOnly }, ({ document_id, limit }) => {
-    const entities = store.listEntities({ limit, ...(document_id ? { documentId: document_id } : {}) });
-    return toolResult({ count: entities.length, entities });
+  server.registerTool("egypt_find_entities", { description: "عرض الكيانات المستخرجة وأعداد ظهورها في الوثائق مع ترقيم عبر offset.", inputSchema: { document_id: z.number().int().positive().optional(), limit: z.number().int().min(1).max(500).default(100), offset: z.number().int().min(0).default(0) }, outputSchema: { ...pageShape, entities: items() }, annotations: readOnly }, ({ document_id, limit, offset }) => {
+    const scope = document_id ? { documentId: document_id } : {};
+    const total = store.countEntities(scope);
+    const entities = store.listEntities({ ...scope, limit, offset });
+    return toolResult({ ...page(offset, total, entities.length), entities });
   });
 
-  server.registerTool("list_events", { description: "عرض الأحداث المؤرخة وربط كل حدث بوثائقه الأصلية.", inputSchema: { document_id: z.number().int().positive().optional(), limit: z.number().int().min(1).max(500).default(100) }, annotations: readOnly }, ({ document_id, limit }) => {
-    const events = store.listEvents({ limit, ...(document_id ? { documentId: document_id } : {}) });
-    return toolResult({ count: events.length, events });
+  server.registerTool("egypt_list_events", { description: "عرض الأحداث المؤرخة وربط كل حدث بوثائقه الأصلية مع ترقيم عبر offset.", inputSchema: { document_id: z.number().int().positive().optional(), limit: z.number().int().min(1).max(500).default(100), offset: z.number().int().min(0).default(0) }, outputSchema: { ...pageShape, events: items() }, annotations: readOnly }, ({ document_id, limit, offset }) => {
+    const scope = document_id ? { documentId: document_id } : {};
+    const total = store.countEvents(scope);
+    const events = store.listEvents({ ...scope, limit, offset });
+    return toolResult({ ...page(offset, total, events.length), events });
   });
 
-  server.registerTool("trace_claim", { description: "تتبع ادعاء واحد إلى الأدلة والمصادر التي أوردته.", inputSchema: { claim_id: z.number().int().positive() }, annotations: readOnly }, ({ claim_id }) => {
-    const claim = store.listClaims({ limit: 500 }).find((item) => item.id === claim_id);
+  server.registerTool("egypt_trace_claim", { description: "تتبع ادعاء واحد إلى الأدلة والمصادر التي أوردته.", inputSchema: { claim_id: z.number().int().positive() }, outputSchema: { ok: z.boolean(), claim: item().optional(), error: item().optional() }, annotations: readOnly }, ({ claim_id }) => {
+    const claim = store.listClaims({ limit: 500 }).find((entry) => entry.id === claim_id);
     return toolResult(claim ? { ok: true, claim } : { ok: false, error: { code: "claim_not_found" } });
   });
 
-  server.registerTool("compare_claims", { description: "تجميع الادعاءات المتشابهة ومقارنة أنواع المواقف والأدلة التي أوردتها المصادر.", inputSchema: { query: z.string().min(1), limit: z.number().int().min(1).max(100).default(20) }, annotations: readOnly }, ({ query, limit }) => {
+  server.registerTool("egypt_compare_claims", { description: "تجميع الادعاءات المتشابهة ومقارنة أنواع المواقف والأدلة التي أوردتها المصادر.", inputSchema: { query: z.string().min(1), limit: z.number().int().min(1).max(100).default(20) }, outputSchema: { query: z.string(), count: z.number().int(), clusters: items() }, annotations: readOnly }, ({ query, limit }) => {
     const clusters = store.compareClaims(query, limit);
     return toolResult({ query, count: clusters.length, clusters });
   });
 
-  server.registerTool("list_live_datasets", { description: "عرض كتالوج البيانات الحية العامة التي تعمل بدون Token، مع البروتوكول والتغطية والترخيص.", inputSchema: {}, annotations: readOnly }, () => {
+  server.registerTool("egypt_list_live_datasets", { description: "عرض كتالوج البيانات الحية العامة التي تعمل بدون Token، مع البروتوكول والتغطية والترخيص.", inputSchema: {}, outputSchema: { count: z.number().int(), datasets: items() }, annotations: readOnly }, () => {
     return toolResult({ count: listLiveDatasets().length, datasets: listLiveDatasets() });
   });
 
@@ -213,25 +236,34 @@ export function createMcpServer(store: ResearchStore, options: McpOptions = {}):
     refugee_dimension: z.enum(["origin", "asylum"]).optional(), flow_code: z.enum(["M", "X", "X,M"]).optional()
   } as const;
 
-  server.registerTool("get_live_data", { description: "جلب بيانات مصر الحية من REST/OData مع قيمة المؤشر والفترة ورابط الاستعلام ووقت الجلب والتحذيرات.", inputSchema: liveInputSchema, annotations: readOnly }, async (input) => {
+  // Live-data payload shapes vary per provider; declare the common provenance envelope as
+  // optional so validation stays descriptive without rejecting any single provider's fields.
+  const liveOutputSchema = {
+    source: z.string().optional(), dataset: z.string().optional(), indicator: z.string().optional(), country: z.string().optional(),
+    records: z.array(z.unknown()).optional(), series: z.array(z.unknown()).optional(), value: z.unknown().optional(),
+    fetched_at: z.string().optional(), query_url: z.string().optional(), license: z.string().optional(), warnings: z.array(z.unknown()).optional(),
+    ok: z.boolean().optional(), error: item().optional()
+  } as const;
+
+  server.registerTool("egypt_get_live_data", { description: "جلب بيانات مصر الحية من REST/OData مع قيمة المؤشر والفترة ورابط الاستعلام ووقت الجلب والتحذيرات.", inputSchema: liveInputSchema, outputSchema: liveOutputSchema, annotations: readOnly }, async (input) => {
     try { return toolResult(await getLiveData(liveQuery(input)) as unknown as Record<string, unknown>); }
     catch (error) { return toolError(error instanceof Error && "code" in error ? String(error.code) : "live_source_error", error instanceof Error ? error.message : String(error)); }
   });
 
   const liveQuerySchema = z.object(liveInputSchema);
-  server.registerTool("compare_live_data", { description: "جمع سلسلتين إلى أربع سلاسل حية للمقارنة مع إبقاء اختلاف الوحدات والمنهجيات ظاهرًا.", inputSchema: { queries: z.array(liveQuerySchema).min(1).max(4) }, annotations: readOnly }, async ({ queries }) => {
+  server.registerTool("egypt_compare_live_data", { description: "جمع سلسلتين إلى أربع سلاسل حية للمقارنة مع إبقاء اختلاف الوحدات والمنهجيات ظاهرًا.", inputSchema: { queries: z.array(liveQuerySchema).min(1).max(4) }, outputSchema: { series: z.array(z.unknown()).optional(), comparisons: z.array(z.unknown()).optional(), warnings: z.array(z.unknown()).optional(), ok: z.boolean().optional(), error: item().optional() }, annotations: readOnly }, async ({ queries }) => {
     try { return toolResult(await compareLiveData(queries.map((query) => liveQuery(query))) as unknown as Record<string, unknown>); }
     catch (error) { return toolError(error instanceof Error && "code" in error ? String(error.code) : "live_source_error", error instanceof Error ? error.message : String(error)); }
   });
 
-  server.registerTool("live_source_health", { description: "اختبار قابلية الوصول الحالية لمصادر البيانات الحية وتمييز السليم عن المحدد بالمعدل أو المتوقف.", inputSchema: {}, annotations: readOnly }, async () => {
+  server.registerTool("egypt_live_source_health", { description: "اختبار قابلية الوصول الحالية لمصادر البيانات الحية وتمييز السليم عن المحدد بالمعدل أو المتوقف.", inputSchema: {}, outputSchema: { checked_at: z.string(), sources: items() }, annotations: readOnly }, async () => {
     try { return toolResult({ checkedAt: new Date().toISOString(), sources: await checkLiveSources() }); }
     catch (error) { return toolError("live_health_error", error instanceof Error ? error.message : String(error)); }
   });
 
-  server.registerTool("get_coverage", { description: "عرض تغطية الأرشيف حسب الموضوع وصحة المصادر وعدد الوثائق القابلة للبحث.", inputSchema: {}, annotations: readOnly }, () => toolResult(store.coverageReport()));
+  server.registerTool("egypt_get_coverage", { description: "عرض تغطية الأرشيف حسب الموضوع وصحة المصادر وعدد الوثائق القابلة للبحث.", inputSchema: {}, outputSchema: { documents: z.number().int(), searchable_documents: z.number().int(), excluded_documents: z.number().int(), sources: z.number().int(), healthy_sources: z.number().int(), topic_counts: z.record(z.string(), z.number()) }, annotations: readOnly }, () => toolResult(store.coverageReport()));
 
-  server.registerTool("save_research_query", { description: "حفظ استعلام بحثي محلي لإعادة تشغيله ومتابعته لاحقًا. الكتابة معطلة في نقطة MCP العامة.", inputSchema: { name: z.string().min(2).max(200), query: z.string().min(2).max(1000) }, annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false } }, ({ name, query }) => {
+  server.registerTool("egypt_save_research_query", { description: "حفظ استعلام بحثي محلي لإعادة تشغيله ومتابعته لاحقًا. الكتابة معطلة في نقطة MCP العامة.", inputSchema: { name: z.string().min(2).max(200), query: z.string().min(2).max(1000) }, outputSchema: { ok: z.boolean(), saved_search: item().optional(), error: item().optional() }, annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false } }, ({ name, query }) => {
     if (options.allowWrites === false) return { ...toolResult({ ok: false, error: { code: "remote_writes_disabled" } }), isError: true };
     return toolResult({ ok: true, savedSearch: store.saveSearch(name, query) });
   });

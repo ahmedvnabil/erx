@@ -22,20 +22,20 @@ const visibleText = (value: unknown): string => escapeHtml(String(value ?? "").r
 
 const capabilities = {
   ar: [
-    ["search_egypt", "ابحث بمرونة", "فتش داخل الوثائق العربية حسب المصدر والتاريخ والموضوع."],
-    ["compare_sources", "قارن قبل أن تقتبس", "شاهد مواضع الاتفاق والاختلاف مع رابط كل أصل."],
-    ["research_dossier", "كوّن ملفًا كاملًا", "اجمع النتائج والخط الزمني والكيانات والاستشهادات في طلب واحد."],
-    ["build_timeline", "رتب الأحداث", "افصل تاريخ الحدث عن النشر والأرشفة بوضوح."],
-    ["get_live_data", "أضف البيانات الحية", "اربط الوثائق بمؤشرات عامة مع الترخيص ووقت الجلب."],
-    ["export_references", "صدّر المراجع", "انقل البحث إلى RIS أو BibTeX أو CSV أو JSONL."]
+    ["egypt_search", "ابحث بمرونة", "فتش داخل الوثائق العربية حسب المصدر والتاريخ والموضوع."],
+    ["egypt_compare_sources", "قارن قبل أن تقتبس", "شاهد مواضع الاتفاق والاختلاف مع رابط كل أصل."],
+    ["egypt_research_dossier", "كوّن ملفًا كاملًا", "اجمع النتائج والخط الزمني والكيانات والاستشهادات في طلب واحد."],
+    ["egypt_build_timeline", "رتب الأحداث", "افصل تاريخ الحدث عن النشر والأرشفة بوضوح."],
+    ["egypt_get_live_data", "أضف البيانات الحية", "اربط الوثائق بمؤشرات عامة مع الترخيص ووقت الجلب."],
+    ["egypt_export_references", "صدّر المراجع", "انقل البحث إلى RIS أو BibTeX أو CSV أو JSONL."]
   ],
   en: [
-    ["search_egypt", "Search with precision", "Filter Arabic records by source, date and subject."],
-    ["compare_sources", "Compare before citing", "See agreement and divergence with every original URL."],
-    ["research_dossier", "Build a complete dossier", "Gather results, timelines, entities and citations in one request."],
-    ["build_timeline", "Order events clearly", "Keep event, publication and archive dates distinct."],
-    ["get_live_data", "Add live public data", "Connect records to licensed indicators and retrieval dates."],
-    ["export_references", "Export references", "Move research into RIS, BibTeX, CSV or JSONL."]
+    ["egypt_search", "Search with precision", "Filter Arabic records by source, date and subject."],
+    ["egypt_compare_sources", "Compare before citing", "See agreement and divergence with every original URL."],
+    ["egypt_research_dossier", "Build a complete dossier", "Gather results, timelines, entities and citations in one request."],
+    ["egypt_build_timeline", "Order events clearly", "Keep event, publication and archive dates distinct."],
+    ["egypt_get_live_data", "Add live public data", "Connect records to licensed indicators and retrieval dates."],
+    ["egypt_export_references", "Export references", "Move research into RIS, BibTeX, CSV or JSONL."]
   ]
 } as const;
 

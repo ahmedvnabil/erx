@@ -20,47 +20,47 @@ export const BRAND = {
 } as const;
 
 export const MCP_TOOL_DOCS = [
-  ["search_egypt", "بحث موحد في الوثائق", "query, source_types?, date_from?, date_to?, limit?", '{"query":"قانون العمل","source_types":["legal"],"limit":20}'],
-  ["get_document", "استرجاع وثيقة واستشهادها", "document_id", '{"document_id":1}'],
-  ["build_timeline", "بناء خط زمني موثق", "query, limit?", '{"query":"حرية الصحافة","limit":50}'],
-  ["compare_sources", "مقارنة التغطية بين أنواع المصادر", "query, limit?", '{"query":"التضخم","limit":50}'],
-  ["get_source_profile", "ملف المصدر وصحة جمعه", "source_slug", '{"source_slug":"eipr"}'],
-  ["list_sources", "كتالوج المصادر وحالتها", "source_type?, active_only?", '{"source_type":"human_rights","active_only":true}'],
-  ["get_daily_brief", "موجز مواد يوم محدد", "date, limit?", '{"date":"2026-07-14","limit":50}'],
-  ["list_stories", "القصص المتقاربة وتنوع ناشريها", "limit?", '{"limit":20}'],
-  ["export_references", "تصدير RIS وBibTeX وCSV وJSONL", "query, format?, limit?", '{"query":"قانون العمل","format":"ris"}'],
-  ["hybrid_search", "بحث نصي ودلالي مع تفسير الترتيب وفلاتر النوع والفترة", "query, source_types?, date_from?, date_to?, limit?", '{"query":"حقوق العمال","source_types":["human_rights"],"limit":20}'],
-  ["research_dossier", "حزمة بحث تجمع النتائج والخط الزمني والكيانات والادعاءات", "query, source_types?, date_from?, date_to?, limit?", '{"query":"حقوق اللاجئين","limit":20}'],
-  ["find_entities", "استخراج الجهات والأماكن المرتبطة", "document_id?, limit?", '{"document_id":1,"limit":100}'],
-  ["list_events", "أحداث مؤرخة مرتبطة بوثائقها", "document_id?, limit?", '{"limit":100}'],
-  ["trace_claim", "تتبع الادعاء إلى كل دليل", "claim_id", '{"claim_id":1}'],
-  ["compare_claims", "تجميع الادعاءات المتشابهة ومقارنة المواقف", "query, limit?", '{"query":"ترحيل اللاجئين","limit":20}'],
-  ["save_research_query", "حفظ استعلام متابعة محلي", "name, query", '{"name":"متابعة قانون العمل","query":"قانون العمل"}']
-  ,["list_live_datasets", "كتالوج REST/OData للبيانات الحية العامة", "بدون مدخلات", "list_live_datasets()"]
-  ,["get_live_data", "جلب مؤشر حي مع provenance وترخيص وتحذيرات", "source, indicator?, country?, period_from?, period_to?, limit?", '{"source":"world-bank","indicator":"SP.POP.TOTL","country":"EGY"}']
-  ,["compare_live_data", "جمع سلاسل حية للمقارنة دون إخفاء اختلاف المنهجيات", "queries[]", '{"queries":[{"source":"world-bank","indicator":"SP.POP.TOTL"},{"source":"imf-datamapper","indicator":"NGDP_RPCH"}]}']
-  ,["live_source_health", "اختبار صحة وإتاحة مصادر البيانات الحية", "بدون مدخلات", "live_source_health()"]
-  ,["get_coverage", "عرض تغطية الأرشيف حسب الموضوع وصحة المصادر", "بدون مدخلات", "get_coverage()"]
+  ["egypt_search", "بحث موحد في الوثائق", "query, source_types?, date_from?, date_to?, limit?", '{"query":"قانون العمل","source_types":["legal"],"limit":20}'],
+  ["egypt_get_document", "استرجاع وثيقة واستشهادها", "document_id", '{"document_id":1}'],
+  ["egypt_build_timeline", "بناء خط زمني موثق", "query, limit?", '{"query":"حرية الصحافة","limit":50}'],
+  ["egypt_compare_sources", "مقارنة التغطية بين أنواع المصادر", "query, limit?", '{"query":"التضخم","limit":50}'],
+  ["egypt_get_source_profile", "ملف المصدر وصحة جمعه", "source_slug", '{"source_slug":"eipr"}'],
+  ["egypt_list_sources", "كتالوج المصادر وحالتها", "source_type?, active_only?", '{"source_type":"human_rights","active_only":true}'],
+  ["egypt_get_daily_brief", "موجز مواد يوم محدد", "date, limit?", '{"date":"2026-07-14","limit":50}'],
+  ["egypt_list_stories", "القصص المتقاربة وتنوع ناشريها", "limit?", '{"limit":20}'],
+  ["egypt_export_references", "تصدير RIS وBibTeX وCSV وJSONL", "query, format?, limit?", '{"query":"قانون العمل","format":"ris"}'],
+  ["egypt_hybrid_search", "بحث نصي ودلالي مع تفسير الترتيب وفلاتر النوع والفترة", "query, source_types?, date_from?, date_to?, limit?", '{"query":"حقوق العمال","source_types":["human_rights"],"limit":20}'],
+  ["egypt_research_dossier", "حزمة بحث تجمع النتائج والخط الزمني والكيانات والادعاءات", "query, source_types?, date_from?, date_to?, limit?", '{"query":"حقوق اللاجئين","limit":20}'],
+  ["egypt_find_entities", "استخراج الجهات والأماكن المرتبطة", "document_id?, limit?", '{"document_id":1,"limit":100}'],
+  ["egypt_list_events", "أحداث مؤرخة مرتبطة بوثائقها", "document_id?, limit?", '{"limit":100}'],
+  ["egypt_trace_claim", "تتبع الادعاء إلى كل دليل", "claim_id", '{"claim_id":1}'],
+  ["egypt_compare_claims", "تجميع الادعاءات المتشابهة ومقارنة المواقف", "query, limit?", '{"query":"ترحيل اللاجئين","limit":20}'],
+  ["egypt_save_research_query", "حفظ استعلام متابعة محلي", "name, query", '{"name":"متابعة قانون العمل","query":"قانون العمل"}']
+  ,["egypt_list_live_datasets", "كتالوج REST/OData للبيانات الحية العامة", "بدون مدخلات", "egypt_list_live_datasets()"]
+  ,["egypt_get_live_data", "جلب مؤشر حي مع provenance وترخيص وتحذيرات", "source, indicator?, country?, period_from?, period_to?, limit?", '{"source":"world-bank","indicator":"SP.POP.TOTL","country":"EGY"}']
+  ,["egypt_compare_live_data", "جمع سلاسل حية للمقارنة دون إخفاء اختلاف المنهجيات", "queries[]", '{"queries":[{"source":"world-bank","indicator":"SP.POP.TOTL"},{"source":"imf-datamapper","indicator":"NGDP_RPCH"}]}']
+  ,["egypt_live_source_health", "اختبار صحة وإتاحة مصادر البيانات الحية", "بدون مدخلات", "egypt_live_source_health()"]
+  ,["egypt_get_coverage", "عرض تغطية الأرشيف حسب الموضوع وصحة المصادر", "بدون مدخلات", "egypt_get_coverage()"]
 ] as const;
 
 const fields = [
-  ["document_id", "integer", "1", "search_egypt · get_document"],
-  ["title", "string", "عنوان الوثيقة", "search_egypt · list_events"],
-  ["canonical_url", "url", "https://…", "search_egypt · get_document"],
-  ["source_slug", "string", "eipr", "list_sources · get_source_profile"],
-  ["source_type", "enum", "human_rights", "search_egypt · list_sources"],
-  ["published_at", "datetime", "2026-07-14T00:00:00Z", "search_egypt"],
-  ["archived_at", "datetime", "2026-07-14T01:00:00Z", "get_document"],
-  ["citation", "object", "url · title · publisher", "search_egypt"],
-  ["match_reasons", "array", "lexical · semantic", "hybrid_search"],
-  ["health_status", "enum", "healthy", "list_sources"],
-  ["claim_text", "string", "نص الادعاء", "trace_claim"],
-  ["occurred_at", "datetime", "2026-07-14", "list_events"],
-  ["value", "number|string", "104000000", "get_live_data · compare_live_data"],
-  ["period", "year/date", "2025", "get_live_data"],
-  ["retrieved_at", "datetime", "2026-07-15T00:00:00Z", "get_live_data · live_source_health"],
-  ["source_url", "url", "https://api.worldbank.org/…", "get_live_data"],
-  ["license", "string", "World Bank data terms", "list_live_datasets · get_live_data"]
+  ["document_id", "integer", "1", "egypt_search · egypt_get_document"],
+  ["title", "string", "عنوان الوثيقة", "egypt_search · egypt_list_events"],
+  ["canonical_url", "url", "https://…", "egypt_search · egypt_get_document"],
+  ["source_slug", "string", "eipr", "egypt_list_sources · egypt_get_source_profile"],
+  ["source_type", "enum", "human_rights", "egypt_search · egypt_list_sources"],
+  ["published_at", "datetime", "2026-07-14T00:00:00Z", "egypt_search"],
+  ["archived_at", "datetime", "2026-07-14T01:00:00Z", "egypt_get_document"],
+  ["citation", "object", "url · title · publisher", "egypt_search"],
+  ["match_reasons", "array", "lexical · semantic", "egypt_hybrid_search"],
+  ["health_status", "enum", "healthy", "egypt_list_sources"],
+  ["claim_text", "string", "نص الادعاء", "egypt_trace_claim"],
+  ["occurred_at", "datetime", "2026-07-14", "egypt_list_events"],
+  ["value", "number|string", "104000000", "egypt_get_live_data · egypt_compare_live_data"],
+  ["period", "year/date", "2025", "egypt_get_live_data"],
+  ["retrieved_at", "datetime", "2026-07-15T00:00:00Z", "egypt_get_live_data · egypt_live_source_health"],
+  ["source_url", "url", "https://api.worldbank.org/…", "egypt_get_live_data"],
+  ["license", "string", "World Bank data terms", "egypt_list_live_datasets · egypt_get_live_data"]
 ] as const;
 
 const PRODUCT_CSS_BASE = `
@@ -132,20 +132,20 @@ function mcpLandingViewV1(sources: SourceRecord[], stories: Story[], baseUrl: st
   const install = "npx -y egypt-research-mcp serve --transport stdio";
   const capabilities = rtl
     ? [
-        ["ابحث داخل مصر", "search_egypt", "بحث عربي موثق مع فلاتر النوع والتاريخ."],
-        ["ابنِ ملفًا بحثيًا", "research_dossier", "نتائج + خط زمني + كيانات + ادعاءات في استدعاء واحد."],
-        ["قارن الروايات", "compare_sources", "اعرف أين تتفق المصادر وأين تختلف، دون مساواة التكرار بالتحقق."],
-        ["تتبع الحدث", "build_timeline", "رتّب الوقائع مع التمييز بين تاريخ الحدث والنشر والأرشفة."],
-        ["اجلب المؤشر الحي", "get_live_data", "World Bank وIMF وWHO وUNHCR وغيرها مع provenance كامل."],
-        ["صدّر الدليل", "export_references", "RIS وBibTeX وCSV وJSONL جاهزة للتقرير أو قاعدة المعرفة."]
+        ["ابحث داخل مصر", "egypt_search", "بحث عربي موثق مع فلاتر النوع والتاريخ."],
+        ["ابنِ ملفًا بحثيًا", "egypt_research_dossier", "نتائج + خط زمني + كيانات + ادعاءات في استدعاء واحد."],
+        ["قارن الروايات", "egypt_compare_sources", "اعرف أين تتفق المصادر وأين تختلف، دون مساواة التكرار بالتحقق."],
+        ["تتبع الحدث", "egypt_build_timeline", "رتّب الوقائع مع التمييز بين تاريخ الحدث والنشر والأرشفة."],
+        ["اجلب المؤشر الحي", "egypt_get_live_data", "World Bank وIMF وWHO وUNHCR وغيرها مع provenance كامل."],
+        ["صدّر الدليل", "egypt_export_references", "RIS وBibTeX وCSV وJSONL جاهزة للتقرير أو قاعدة المعرفة."]
       ]
     : [
-        ["Search Egypt", "search_egypt", "Arabic, source-backed search with type and date filters."],
-        ["Build a dossier", "research_dossier", "Results, timelines, entities and claims in one call."],
-        ["Compare narratives", "compare_sources", "See agreement and divergence without calling repetition proof."],
-        ["Trace an event", "build_timeline", "Separate event, publication and archive dates."],
-        ["Fetch live indicators", "get_live_data", "World Bank, IMF, WHO, UNHCR and more with provenance."],
-        ["Export evidence", "export_references", "RIS, BibTeX, CSV and JSONL for reports and pipelines."]
+        ["Search Egypt", "egypt_search", "Arabic, source-backed search with type and date filters."],
+        ["Build a dossier", "egypt_research_dossier", "Results, timelines, entities and claims in one call."],
+        ["Compare narratives", "egypt_compare_sources", "See agreement and divergence without calling repetition proof."],
+        ["Trace an event", "egypt_build_timeline", "Separate event, publication and archive dates."],
+        ["Fetch live indicators", "egypt_get_live_data", "World Bank, IMF, WHO, UNHCR and more with provenance."],
+        ["Export evidence", "egypt_export_references", "RIS, BibTeX, CSV and JSONL for reports and pipelines."]
       ];
   const copy = rtl ? {
     eyebrow: "MCP SERVER / الشأن المصري",
@@ -203,7 +203,7 @@ export function docsView(sources: SourceRecord[], baseUrl: string): string {
   const typeCounts = sourceTypeCounts(sources);
   const install = `npx -y egypt-research-mcp serve --transport stdio`;
   const remote = `${baseUrl}/mcp`;
-  return pageShell(`<section class="product-shell docs-hero"><p class="eyebrow">ERX / DOCUMENTATION</p><h1>اربط، ابحث، واستشهد.</h1><p class="section-intro">مرجع التشغيل و${MCP_TOOL_DOCS.length} أداة MCP والحقول الأساسية في بيانات مرصد مصر البحثي.</p></section><div class="product-shell docs-layout"><aside class="docs-toc"><a href="#quickstart">بدء سريع</a><a href="#distribution">توزيع المصادر</a><a href="#tools">أدوات MCP</a><a href="#fields">فهرس الحقول</a><a href="#method">المنهجية</a></aside><div class="docs-content"><section id="quickstart"><p class="section-kicker">01 / QUICKSTART</p><h2>تشغيل محلي</h2><div class="code-line"><button class="copy-control" data-copy="${esc(install)}">نسخ</button><code>${esc(install)}</code></div><h2>Streamable HTTP</h2><div class="code-line"><button class="copy-control" data-copy="${esc(remote)}">نسخ</button><code>${esc(remote)}</code></div><div class="launch-note">الحزمة لا تحتاج مفتاح API للتشغيل المحلي. <code>GEMINI_API_KEY</code> اختياري فقط للفهرسة الدلالية الخارجية.</div></section><section id="distribution"><p class="section-kicker">02 / LIVE SOURCE INVENTORY</p><h2>توزيع ${sources.length} مصدرًا حسب النوع</h2><div class="chart-wrap"><canvas data-source-chart data-labels="${jsonAttr(typeCounts.map(([label]) => label))}" data-values="${jsonAttr(typeCounts.map(([, count]) => count))}" aria-label="توزيع أنواع المصادر"></canvas></div></section><section id="tools"><p class="section-kicker">03 / TOOL REFERENCE</p><h2>كل أدوات MCP</h2><div class="tool-list">${MCP_TOOL_DOCS.map(([name, description, input, example]) => `<article class="tool-card"><div class="tool-card__head"><code>${name}</code><span class="source-chip">${name === "save_research_query" ? "WRITE LOCAL" : "READ"}</span></div><p>${description}</p><div class="tool-meta">INPUT · ${input}</div><div class="code-line"><button class="copy-control" data-copy='${esc(`${name}(${example})`)}'>نسخ</button><code>${esc(`${name}(${example})`)}</code></div></article>`).join("")}</div></section><section id="fields"><p class="section-kicker">04 / FIELD INVENTORY</p><h2>فهرس الحقول الأساسية</h2><div class="scroll-x"><table class="field-table"><thead><tr><th>الحقل</th><th>النوع</th><th>مثال</th><th>الأدوات</th></tr></thead><tbody>${fields.map(([name, type, example, tools]) => `<tr><td><code>${name}</code></td><td>${type}</td><td>${example}</td><td>${tools}</td></tr>`).join("")}</tbody></table></div></section><section id="method"><p class="section-kicker">05 / RESEARCH CONTRACT</p><h2>ما الذي يضمنه ERX؟</h2><div class="workflow-grid"><article class="product-card"><span class="index">01</span><h3>المصدر أولًا</h3><p>كل نتيجة تعيد الرابط والناشر وتواريخ النشر والأرشفة.</p></article><article class="product-card"><span class="index">02</span><h3>لا درجات حقيقة آلية</h3><p>نوع المصدر وملكيته سياق للمقارنة، وليس حكمًا مسبقًا.</p></article><article class="product-card"><span class="index">03</span><h3>التكرار ليس تحققًا</h3><p>إعادة النشر تُفصل عن التأكيد المستقل والوثيقة الأولية.</p></article></div></section></div></div>`, { language: "ar", title: `التوثيق — ${BRAND.arabicName}`, description: "مرجع أدوات MCP والتثبيت والحقول والمنهجية لمرصد مصر البحثي.", path: "/docs", baseUrl, chart: true });
+  return pageShell(`<section class="product-shell docs-hero"><p class="eyebrow">ERX / DOCUMENTATION</p><h1>اربط، ابحث، واستشهد.</h1><p class="section-intro">مرجع التشغيل و${MCP_TOOL_DOCS.length} أداة MCP والحقول الأساسية في بيانات مرصد مصر البحثي.</p></section><div class="product-shell docs-layout"><aside class="docs-toc"><a href="#quickstart">بدء سريع</a><a href="#distribution">توزيع المصادر</a><a href="#tools">أدوات MCP</a><a href="#fields">فهرس الحقول</a><a href="#method">المنهجية</a></aside><div class="docs-content"><section id="quickstart"><p class="section-kicker">01 / QUICKSTART</p><h2>تشغيل محلي</h2><div class="code-line"><button class="copy-control" data-copy="${esc(install)}">نسخ</button><code>${esc(install)}</code></div><h2>Streamable HTTP</h2><div class="code-line"><button class="copy-control" data-copy="${esc(remote)}">نسخ</button><code>${esc(remote)}</code></div><div class="launch-note">الحزمة لا تحتاج مفتاح API للتشغيل المحلي. <code>GEMINI_API_KEY</code> اختياري فقط للفهرسة الدلالية الخارجية.</div></section><section id="distribution"><p class="section-kicker">02 / LIVE SOURCE INVENTORY</p><h2>توزيع ${sources.length} مصدرًا حسب النوع</h2><div class="chart-wrap"><canvas data-source-chart data-labels="${jsonAttr(typeCounts.map(([label]) => label))}" data-values="${jsonAttr(typeCounts.map(([, count]) => count))}" aria-label="توزيع أنواع المصادر"></canvas></div></section><section id="tools"><p class="section-kicker">03 / TOOL REFERENCE</p><h2>كل أدوات MCP</h2><div class="tool-list">${MCP_TOOL_DOCS.map(([name, description, input, example]) => `<article class="tool-card"><div class="tool-card__head"><code>${name}</code><span class="source-chip">${name === "egypt_save_research_query" ? "WRITE LOCAL" : "READ"}</span></div><p>${description}</p><div class="tool-meta">INPUT · ${input}</div><div class="code-line"><button class="copy-control" data-copy='${esc(`${name}(${example})`)}'>نسخ</button><code>${esc(`${name}(${example})`)}</code></div></article>`).join("")}</div></section><section id="fields"><p class="section-kicker">04 / FIELD INVENTORY</p><h2>فهرس الحقول الأساسية</h2><div class="scroll-x"><table class="field-table"><thead><tr><th>الحقل</th><th>النوع</th><th>مثال</th><th>الأدوات</th></tr></thead><tbody>${fields.map(([name, type, example, tools]) => `<tr><td><code>${name}</code></td><td>${type}</td><td>${example}</td><td>${tools}</td></tr>`).join("")}</tbody></table></div></section><section id="method"><p class="section-kicker">05 / RESEARCH CONTRACT</p><h2>ما الذي يضمنه ERX؟</h2><div class="workflow-grid"><article class="product-card"><span class="index">01</span><h3>المصدر أولًا</h3><p>كل نتيجة تعيد الرابط والناشر وتواريخ النشر والأرشفة.</p></article><article class="product-card"><span class="index">02</span><h3>لا درجات حقيقة آلية</h3><p>نوع المصدر وملكيته سياق للمقارنة، وليس حكمًا مسبقًا.</p></article><article class="product-card"><span class="index">03</span><h3>التكرار ليس تحققًا</h3><p>إعادة النشر تُفصل عن التأكيد المستقل والوثيقة الأولية.</p></article></div></section></div></div>`, { language: "ar", title: `التوثيق — ${BRAND.arabicName}`, description: "مرجع أدوات MCP والتثبيت والحقول والمنهجية لمرصد مصر البحثي.", path: "/docs", baseUrl, chart: true });
 }
 
 export function structuredData(baseUrl: string, sources: number, documents: number): Record<string, unknown> {

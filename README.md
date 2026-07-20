@@ -102,37 +102,37 @@ npx -y egypt-research-mcp serve --transport stdio
 
 | الأداة | الوظيفة |
 |---|---|
-| `search_egypt` | بحث حسب النص ونوع المصدر والفترة |
-| `hybrid_search` | بحث نصي ودلالي مع تفسير الترتيب |
-| `get_document` | وثيقة كاملة مع بيانات الاستشهاد |
-| `research_dossier` | نتائج وخط زمني وكيانات وادعاءات في طلب واحد |
-| `trace_claim` | تتبع الادعاء إلى الأدلة التي أوردته |
-| `compare_claims` | تجميع الادعاءات المتشابهة ومقارنة المواقف |
+| `egypt_search` | بحث حسب النص ونوع المصدر والفترة |
+| `egypt_hybrid_search` | بحث نصي ودلالي مع تفسير الترتيب |
+| `egypt_get_document` | وثيقة كاملة مع بيانات الاستشهاد |
+| `egypt_research_dossier` | نتائج وخط زمني وكيانات وادعاءات في طلب واحد |
+| `egypt_trace_claim` | تتبع الادعاء إلى الأدلة التي أوردته |
+| `egypt_compare_claims` | تجميع الادعاءات المتشابهة ومقارنة المواقف |
 
 ### المقارنة والتنظيم
 
 | الأداة | الوظيفة |
 |---|---|
-| `compare_sources` | مقارنة التغطية حسب نوع المصدر |
-| `build_timeline` | بناء خط زمني موثق |
-| `list_stories` | قصص متقاربة مع تنوع الناشرين |
-| `find_entities` | الكيانات ومواضع ظهورها |
-| `list_events` | الأحداث المؤرخة ووثائقها |
-| `get_daily_brief` | مواد يوم محدد وتنوع مصادرها |
-| `list_sources` | عرض كتالوج المصادر التشغيلية |
-| `get_source_profile` | بيانات المصدر وصحة الجمع |
+| `egypt_compare_sources` | مقارنة التغطية حسب نوع المصدر |
+| `egypt_build_timeline` | بناء خط زمني موثق |
+| `egypt_list_stories` | قصص متقاربة مع تنوع الناشرين |
+| `egypt_find_entities` | الكيانات ومواضع ظهورها |
+| `egypt_list_events` | الأحداث المؤرخة ووثائقها |
+| `egypt_get_daily_brief` | مواد يوم محدد وتنوع مصادرها |
+| `egypt_list_sources` | عرض كتالوج المصادر التشغيلية |
+| `egypt_get_source_profile` | بيانات المصدر وصحة الجمع |
 
 ### البيانات والتصدير
 
 | الأداة | الوظيفة |
 |---|---|
-| `list_live_datasets` | كتالوج مجموعات البيانات العامة |
-| `get_live_data` | جلب مؤشر أو سجل حي مع بيانات المصدر |
-| `compare_live_data` | مقارنة سلاسل مع تنبيه اختلاف المنهجيات |
-| `live_source_health` | فحص صحة موفري البيانات الحية |
-| `export_references` | تصدير RIS وBibTeX وCSV وJSONL |
-| `get_coverage` | تغطية الأرشيف وصحة المصادر |
-| `save_research_query` | حفظ استعلام متابعة محليًا؛ معطلة على نقطة MCP العامة |
+| `egypt_list_live_datasets` | كتالوج مجموعات البيانات العامة |
+| `egypt_get_live_data` | جلب مؤشر أو سجل حي مع بيانات المصدر |
+| `egypt_compare_live_data` | مقارنة سلاسل مع تنبيه اختلاف المنهجيات |
+| `egypt_live_source_health` | فحص صحة موفري البيانات الحية |
+| `egypt_export_references` | تصدير RIS وBibTeX وCSV وJSONL |
+| `egypt_get_coverage` | تغطية الأرشيف وصحة المصادر |
+| `egypt_save_research_query` | حفظ استعلام متابعة محليًا؛ معطلة على نقطة MCP العامة |
 
 توجد أيضًا موارد `egypt://sources` و`egypt://taxonomy` و`egypt://methodology`،
 وprompts للبحث المنظم والتحقق من الادعاءات. راجع [`src/mcp.ts`](src/mcp.ts)
